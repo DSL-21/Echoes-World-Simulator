@@ -226,8 +226,8 @@ impl WorldState {
             capitals.push(capital);
             factions.push(Faction::new(name, *color, capital));
 
-            for dy in -1..=1 {
-                for dx in -1..=1 {
+            for dy in -1_i32..=1 {
+                for dx in -1_i32..=1 {
                     if dx.abs() + dy.abs() > 1 {
                         continue;
                     }
@@ -1040,9 +1040,9 @@ fn nearest_land(tiles: &[WorldTile], target: IVec2, existing: &[IVec2]) -> IVec2
 
             let mut score = point.distance_squared(target) as f32;
             for other in existing {
-                let distance = point.distance(*other);
-                if distance < 7.0 {
-                    score += (7.0 - distance) * 100.0;
+                let distance_squared = point.distance_squared(*other) as f32;
+                if distance_squared < 49.0 {
+                    score += (7.0 - distance_squared.sqrt()) * 100.0;
                 }
             }
             if score < best_score {
