@@ -1,4 +1,8 @@
-use bevy::{picking::hover::Hovered, prelude::*, ui_widgets::{Activate, Button}};
+use bevy::{
+    picking::hover::Hovered,
+    prelude::*,
+    ui_widgets::{Activate, Button},
+};
 use std::collections::VecDeque;
 
 const MAP_WIDTH: i32 = 32;
@@ -174,8 +178,10 @@ impl WorldState {
         for y in 0..MAP_HEIGHT {
             for x in 0..MAP_WIDTH {
                 let continent = smooth_noise(x as f32 * 0.105, y as f32 * 0.105, seed);
-                let detail = smooth_noise(x as f32 * 0.29 + 31.0, y as f32 * 0.29 - 17.0, seed + 11);
-                let moisture = smooth_noise(x as f32 * 0.13 - 42.0, y as f32 * 0.13 + 19.0, seed + 37);
+                let detail =
+                    smooth_noise(x as f32 * 0.29 + 31.0, y as f32 * 0.29 - 17.0, seed + 11);
+                let moisture =
+                    smooth_noise(x as f32 * 0.13 - 42.0, y as f32 * 0.13 + 19.0, seed + 37);
                 let elevation = continent * 0.76 + detail * 0.24;
 
                 let terrain = if elevation < 0.34 {
@@ -315,7 +321,10 @@ fn setup(mut commands: Commands, world: Res<WorldState>) {
             let position = tile_position(point);
 
             commands.spawn((
-                Sprite::from_color(Color::srgb(0.035, 0.055, 0.075), Vec2::splat(TILE_STEP - 1.0)),
+                Sprite::from_color(
+                    Color::srgb(0.035, 0.055, 0.075),
+                    Vec2::splat(TILE_STEP - 1.0),
+                ),
                 Transform::from_translation(position),
             ));
             commands.spawn((
@@ -336,10 +345,7 @@ fn setup(mut commands: Commands, world: Res<WorldState>) {
             Transform::from_translation(position + Vec3::new(0.0, 0.0, 3.0)),
         ));
         commands.spawn((
-            Sprite::from_color(
-                Color::srgb(0.96, 0.91, 0.72),
-                Vec2::splat(5.0),
-            ),
+            Sprite::from_color(Color::srgb(0.96, 0.91, 0.72), Vec2::splat(5.0)),
             Transform::from_translation(position + Vec3::new(0.0, 0.0, 4.0)),
         ));
     }
@@ -436,141 +442,155 @@ fn spawn_hud(commands: &mut Commands) {
                 TextColor(Color::srgb(0.91, 0.83, 0.61)),
             ));
 
-            parent.spawn(Node {
-                flex_direction: FlexDirection::Column,
-                row_gap: px(7),
-                ..default()
-            }).with_children(|buttons| {
-                buttons.spawn((
-                    Button,
-                    Hovered::default(),
-                    UiAction::EndTurn,
-                    Node {
-                        width: percent(100),
-                        height: px(40),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.22, 0.39, 0.42)),
-                )).with_children(|button| {
-                    button.spawn((
-                        Text::new("END TURN  [SPACE]"),
-                        TextFont::from_font_size(14.0),
-                        TextColor(Color::WHITE),
-                    ));
-                });
-
-                buttons.spawn((
-                    Button,
-                    Hovered::default(),
-                    UiAction::Claim,
-                    Node {
-                        width: percent(100),
-                        height: px(36),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.20, 0.31, 0.36)),
-                )).with_children(|button| {
-                    button.spawn((
-                        Text::new("CLAIM SELECTED LAND  [C]"),
-                        TextFont::from_font_size(12.0),
-                        TextColor(Color::WHITE),
-                    ));
-                });
-
-                buttons.spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: px(7),
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(7),
                     ..default()
-                }).with_children(|row| {
-                    row.spawn((
-                        Button,
-                        Hovered::default(),
-                        UiAction::Farm,
-                        Node {
-                            width: px(140),
-                            height: px(34),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.25, 0.34, 0.24)),
-                    )).with_children(|button| {
-                        button.spawn((
-                            Text::new("FARM  [1]"),
-                            TextFont::from_font_size(12.0),
-                            TextColor(Color::WHITE),
-                        ));
-                    });
-                    row.spawn((
-                        Button,
-                        Hovered::default(),
-                        UiAction::LoggingCamp,
-                        Node {
-                            width: px(140),
-                            height: px(34),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.19, 0.33, 0.27)),
-                    )).with_children(|button| {
-                        button.spawn((
-                            Text::new("CAMP  [2]"),
-                            TextFont::from_font_size(12.0),
-                            TextColor(Color::WHITE),
-                        ));
-                    });
-                });
+                })
+                .with_children(|buttons| {
+                    buttons
+                        .spawn((
+                            Button,
+                            Hovered::default(),
+                            UiAction::EndTurn,
+                            Node {
+                                width: percent(100),
+                                height: px(40),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.22, 0.39, 0.42)),
+                        ))
+                        .with_children(|button| {
+                            button.spawn((
+                                Text::new("END TURN  [SPACE]"),
+                                TextFont::from_font_size(14.0),
+                                TextColor(Color::WHITE),
+                            ));
+                        });
 
-                buttons.spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: px(7),
-                    ..default()
-                }).with_children(|row| {
-                    row.spawn((
-                        Button,
-                        Hovered::default(),
-                        UiAction::Quarry,
-                        Node {
-                            width: px(140),
-                            height: px(34),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
+                    buttons
+                        .spawn((
+                            Button,
+                            Hovered::default(),
+                            UiAction::Claim,
+                            Node {
+                                width: percent(100),
+                                height: px(36),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.20, 0.31, 0.36)),
+                        ))
+                        .with_children(|button| {
+                            button.spawn((
+                                Text::new("CLAIM SELECTED LAND  [C]"),
+                                TextFont::from_font_size(12.0),
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(7),
                             ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.30, 0.31, 0.34)),
-                    )).with_children(|button| {
-                        button.spawn((
-                            Text::new("QUARRY  [3]"),
-                            TextFont::from_font_size(12.0),
-                            TextColor(Color::WHITE),
-                        ));
-                    });
-                    row.spawn((
-                        Button,
-                        Hovered::default(),
-                        UiAction::Market,
-                        Node {
-                            width: px(140),
-                            height: px(34),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Farm,
+                                Node {
+                                    width: px(140),
+                                    height: px(34),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.25, 0.34, 0.24)),
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new("FARM  [1]"),
+                                    TextFont::from_font_size(12.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::LoggingCamp,
+                                Node {
+                                    width: px(140),
+                                    height: px(34),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.19, 0.33, 0.27)),
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new("CAMP  [2]"),
+                                    TextFont::from_font_size(12.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(7),
                             ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.38, 0.29, 0.20)),
-                    )).with_children(|button| {
-                        button.spawn((
-                            Text::new("MARKET  [4]"),
-                            TextFont::from_font_size(12.0),
-                            TextColor(Color::WHITE),
-                        ));
-                    });
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Quarry,
+                                Node {
+                                    width: px(140),
+                                    height: px(34),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.30, 0.31, 0.34)),
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new("QUARRY  [3]"),
+                                    TextFont::from_font_size(12.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Market,
+                                Node {
+                                    width: px(140),
+                                    height: px(34),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.38, 0.29, 0.20)),
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new("MARKET  [4]"),
+                                    TextFont::from_font_size(12.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
                 });
-            });
 
             parent.spawn((
                 Text::new("WORLD CHRONICLE"),
@@ -619,12 +639,10 @@ fn handle_mouse_selection(
         return;
     };
 
-    let x = ((world_position.x - MAP_CENTER.x) / TILE_STEP
-        + (MAP_WIDTH - 1) as f32 / 2.0)
-        .round() as i32;
-    let y = ((MAP_HEIGHT - 1) as f32 / 2.0
-        - (world_position.y - MAP_CENTER.y) / TILE_STEP)
-        .round() as i32;
+    let x = ((world_position.x - MAP_CENTER.x) / TILE_STEP + (MAP_WIDTH - 1) as f32 / 2.0).round()
+        as i32;
+    let y = ((MAP_HEIGHT - 1) as f32 / 2.0 - (world_position.y - MAP_CENTER.y) / TILE_STEP).round()
+        as i32;
     let point = IVec2::new(x, y);
 
     if let Some(tile) = world.tile(point).copied() {
@@ -633,7 +651,12 @@ fn handle_mouse_selection(
             .owner
             .map(|id| world.factions[id].name.clone())
             .unwrap_or_else(|| "Unclaimed land".to_owned());
-        world.push_log(format!("Selected {} at {}, {}.", tile.terrain.name(), x + 1, y + 1));
+        world.push_log(format!(
+            "Selected {} at {}, {}.",
+            tile.terrain.name(),
+            x + 1,
+            y + 1
+        ));
         if tile.city {
             world.push_log(format!("{} is a capital city.", owner));
         }
@@ -690,7 +713,11 @@ fn advance_turn(world: &mut WorldState) {
         let mut stone_production = 0.0;
         let mut gold_production = 0.0;
 
-        for tile in world.tiles.iter().filter(|tile| tile.owner == Some(faction_id)) {
+        for tile in world
+            .tiles
+            .iter()
+            .filter(|tile| tile.owner == Some(faction_id))
+        {
             let yields = tile_yields(tile);
             food_production += yields.0;
             wood_production += yields.1;
@@ -750,8 +777,7 @@ fn advance_turn(world: &mut WorldState) {
                 world.push_log("MERCHANT CARAVAN — traders bring 16 gold to your treasury.");
             }
             _ => {
-                world.factions[PLAYER_ID].food =
-                    (world.factions[PLAYER_ID].food - 9.0).max(0.0);
+                world.factions[PLAYER_ID].food = (world.factions[PLAYER_ID].food - 9.0).max(0.0);
                 world.push_log("DRY SUMMER — the harvest suffers and 9 food is lost.");
             }
         }
@@ -853,7 +879,8 @@ fn best_expansion(world: &WorldState, faction_id: usize) -> Option<IVec2> {
                 continue;
             }
 
-            let variety = ((x * 17 + y * 31 + faction_id as i32 * 13).rem_euclid(11)) as f32 / 100.0;
+            let variety =
+                ((x * 17 + y * 31 + faction_id as i32 * 13).rem_euclid(11)) as f32 / 100.0;
             let score = tile.terrain.expansion_value() + variety;
             if best.is_none_or(|(_, best_score)| score > best_score) {
                 best = Some((point, score));
@@ -872,7 +899,11 @@ fn has_adjacent_owner(world: &WorldState, point: IVec2, faction_id: usize) -> bo
         IVec2::new(0, -1),
     ]
     .into_iter()
-    .any(|offset| world.tile(point + offset).is_some_and(|tile| tile.owner == Some(faction_id)))
+    .any(|offset| {
+        world
+            .tile(point + offset)
+            .is_some_and(|tile| tile.owner == Some(faction_id))
+    })
 }
 
 fn tile_yields(tile: &WorldTile) -> (f32, f32, f32, f32) {
@@ -934,7 +965,10 @@ fn update_hud(world: Res<WorldState>, mut labels: Query<(&mut Text, &HudLine)>) 
     let player = &world.factions[PLAYER_ID];
     for (mut text, line) in &mut labels {
         **text = match line {
-            HudLine::Header => format!("THE LIVING WORLD  •  YEAR {}  •  TURN {}", world.year, world.turn),
+            HudLine::Header => format!(
+                "THE LIVING WORLD  •  YEAR {}  •  TURN {}",
+                world.year, world.turn
+            ),
             HudLine::Resources => format!(
                 "FOOD       {:>5.0}\nWOOD       {:>5.0}\nSTONE      {:>5.0}\nGOLD       {:>5.0}\nINFLUENCE  {:>5.0}",
                 player.food, player.wood, player.stone, player.gold, player.influence
@@ -947,7 +981,10 @@ fn update_hud(world: Res<WorldState>, mut labels: Query<(&mut Text, &HudLine)>) 
             ),
             HudLine::Selected => {
                 if let Some(tile) = world.tile(world.selected) {
-                    let owner = tile.owner.map(|id| world.factions[id].name.as_str()).unwrap_or("Unclaimed");
+                    let owner = tile
+                        .owner
+                        .map(|id| world.factions[id].name.as_str())
+                        .unwrap_or("Unclaimed");
                     format!(
                         "{}\nOwner: {}\nImprovement: {}\nPosition: {}, {}",
                         tile.terrain.name(),
@@ -1037,9 +1074,8 @@ fn smooth_noise(x: f32, y: f32, seed: u32) -> f32 {
 }
 
 fn hash_value(x: i32, y: i32, seed: u32) -> f32 {
-    let value = ((x as f32 * 127.1 + y as f32 * 311.7 + seed as f32 * 74.7).sin()
-        * 43_758.547)
-        .fract();
+    let value =
+        ((x as f32 * 127.1 + y as f32 * 311.7 + seed as f32 * 74.7).sin() * 43_758.547).fract();
     value.abs()
 }
 
@@ -1068,7 +1104,12 @@ mod tests {
     fn map_contains_land_and_water() {
         let world = WorldState::generate();
         assert!(world.tiles.iter().any(|tile| tile.terrain.is_land()));
-        assert!(world.tiles.iter().any(|tile| tile.terrain == Terrain::Water));
+        assert!(
+            world
+                .tiles
+                .iter()
+                .any(|tile| tile.terrain == Terrain::Water)
+        );
     }
 
     #[test]
