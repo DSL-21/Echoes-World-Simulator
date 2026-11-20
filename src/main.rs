@@ -609,7 +609,6 @@ fn spawn_hud(commands: &mut Commands) {
                                 ));
                             });
                         });
-                });
 
                     buttons
                         .spawn(Node {
