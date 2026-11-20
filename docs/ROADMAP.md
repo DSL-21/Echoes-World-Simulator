@@ -1,42 +1,61 @@
 # ECHOES development roadmap
 
-The roadmap is intentionally milestone-based. Each milestone should leave the game runnable.
+The project is being built as a connected simulation rather than a collection of disconnected menus. Milestones describe systems that are implemented and tested, not merely planned.
 
 ## 0.1 — Living map prototype
 - [x] Procedural terrain generation
 - [x] Five starting realms and capitals
-- [x] Tile selection and province ownership
-- [x] Claiming connected neutral territory
+- [x] Province selection and ownership
+- [x] Connected land claims
 - [x] Resource production and population growth
-- [x] Four province improvements
+- [x] Province improvements
 - [x] Rival expansion AI
-- [x] Turn/year progression and world events
-- [x] In-game HUD and controls
-- [ ] First CI-confirmed Windows build
+- [x] Turn progression, events and chronicle
+- [x] Windows x64 CI build
 
-## 0.2 — A world with depth
-- [ ] Pan and zoom camera
-- [ ] Save/load games
-- [ ] More meaningful biome and terrain placement
-- [ ] City founding and city growth
-- [ ] Trade routes and resource exchange
-- [ ] Stronger AI priorities and difficulty settings
+## 0.2 — Simulation foundation
+- [x] Separate simulation modules from Bevy presentation
+- [x] Expanded world terrain and deterministic generation
+- [x] Resource stockpiles and terrain/building yield model
+- [x] City founding and settlement population
+- [x] Treaty matrix, trade agreements, war and truces
+- [x] Army recruitment, movement, supply and province battles
+- [x] Technology catalogue, prerequisites and research progress
+- [x] Periodic world events with persistent effects
+- [x] Camera pan and zoom
+- [x] Versioned JSON save/load
+- [ ] Verify visual playability on a Windows desktop
+- [ ] Add automated multi-year balance and AI simulation tests
 
-## 0.3 — Diplomacy and conflict
-- [ ] Relations, treaties and alliances
-- [ ] Claims, demands and diplomatic events
-- [ ] Armies, supply and tactical resolution
-- [ ] Wars, peace offers and border changes
+## 0.3 — Grand strategy systems
+- [ ] Multi-step production chains and market prices
+- [ ] Trade routes, ports and maritime transport
+- [ ] Diplomacy AI: proposals, alliances, guarantees and demands
+- [ ] War goals, peace terms, occupations and sieges
+- [ ] Unit recruitment by province, commanders and army composition
+- [ ] Province autonomy, governors, unrest and revolts
+- [ ] Faction objectives, personalities and difficulty settings
 
-## 0.4 — Civilization identity
-- [ ] Research and technology tree
-- [ ] Culture and political institutions
-- [ ] Named historical events
-- [ ] Faction personalities and victory goals
+## 0.4 — Civilization and world history
+- [ ] Culture groups, languages and religious/civic institutions
+- [ ] Migration, assimilation and demographic change
+- [ ] Dynamic historical event chains
+- [ ] Deeper research tree and era progression
+- [ ] Institutions, laws, succession and political crises
+- [ ] Victory conditions and sandbox campaign rules
 
-## 0.5 — Presentation and release quality
-- [ ] Dedicated main menu and settings
-- [ ] Soundtrack, ambience and sound effects
-- [ ] Animated terrain, cities and events
-- [ ] Tutorial and in-game encyclopedia
-- [ ] Linux and macOS builds
+## 0.5 — World presentation and release quality
+- [ ] World map layers, labels, borders and province overlays
+- [ ] City and army models/icons with animated state changes
+- [ ] Main menu, scenario setup, settings and tutorial
+- [ ] Audio, ambience, music and event presentation
+- [ ] Performance profiling and large-world optimization
+- [ ] Release workflow, versioned Windows packages and Linux build
+
+## Engineering rules
+
+- Simulation rules stay independent from Bevy rendering.
+- Randomized world generation and events are seed-driven and reproducible.
+- Major player actions validate costs and preconditions before changing state.
+- Save files carry an explicit format version and are validated on load.
+- Each milestone must pass formatting, tests and a Windows x64 build.

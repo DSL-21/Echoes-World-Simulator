@@ -2,6 +2,10 @@
 /target/
 **/*.rs.bk
 
+# Local campaign saves
+echoes_save.json
+echoes_save.json.tmp
+
 # IDEs
 .idea/
 .vscode/

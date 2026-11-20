@@ -1,64 +1,78 @@
 # ECHOES — Living World Simulator
 
-**ECHOES** is a turn-based world-building strategy game written in Rust with the Bevy engine.
+**ECHOES** is a turn-based grand-strategy and civilization simulation project built with Rust and Bevy.
 
-You are not controlling a single army. You are guiding a realm inside a living procedural world: claim land, develop its resources, grow your population, and watch rival civilizations expand around you.
+The goal is a systemic world in which independent realms expand, develop economies, research technologies, negotiate, fight wars and leave a historical record. The current build is a playable foundation, not the final scope of the game.
 
-> Current status: **early playable prototype (0.1.0-dev)**. Systems and presentation are actively being built; this is not yet a finished game.
+## Current build — 0.2.0-dev
 
-## First playable milestone
-
-- Procedurally generated terrain map with water, grassland, forest, desert, plains and mountains.
-- Five rival realms, each with a capital, territory, resource stockpiles and an AI expansion turn.
-- Select land with the mouse.
-- Claim neutral land connected to your territory.
-- Improve owned land with farms, logging camps, quarries and markets.
-- End turns to produce resources, grow population and advance the world year.
-- Random world events and a running chronicle.
-- Keyboard controls and an in-game control panel.
+- Deterministic procedural world generation with eight terrain types and coastal transitions.
+- Five rival realms with capitals, starting provinces, populations, economies and AI personalities.
+- Province ownership, connected expansion and terrain-dependent construction.
+- Economy with food, timber, stone, iron, gold, science and influence.
+- Eight province building types with costs and production effects.
+- City founding and population tracking.
+- Diplomacy with trade agreements, war declarations and truces.
+- Armies with recruitment, movement, supply, experience and province battles.
+- Research tree with prerequisites and technology effects.
+- Periodic world events and a persistent chronicle.
+- Camera panning and zoom, province selection and contextual realm information.
+- JSON campaign save/load using F5 and F9.
+- Automated tests plus Windows x64 build and downloadable preview artifact.
 
 ## Controls
 
 | Input | Action |
 |---|---|
-| Left mouse button | Select a tile |
-| `Space` | End turn |
-| `C` | Claim selected adjacent neutral land |
-| `1` | Build a farm |
-| `2` | Build a logging camp |
-| `3` | Build a quarry |
-| `4` | Build a market |
+| Left mouse button | Select a province |
+| WASD | Pan the camera |
+| Plus / minus | Zoom in / out |
+| Space | Advance one year |
+| C | Claim selected adjacent neutral province |
+| 1 | Build a farm |
+| 2 | Build a lumber mill |
+| 3 | Build a quarry |
+| 4 | Build a market |
+| B | Found a city in the selected province |
+| G | Recruit an infantry army |
+| R | Start the next available technology |
+| M | Move the nearest army to the selected adjacent province |
+| T | Propose a trade agreement with the selected realm |
+| X | Declare war on the selected realm |
+| P | Offer a truce to the selected realm |
+| F5 | Save campaign to echoes_save.json |
+| F9 | Load campaign from echoes_save.json |
 
-The in-game panel also provides clickable actions.
+The in-game Realm Council also provides clickable actions. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
-## Build and run
+## Build from source
 
-Requirements: a current stable Rust toolchain and the platform prerequisites listed in the [Bevy setup guide](https://bevy.org/learn/quick-start/getting-started/setup/).
+Requirements: stable Rust and the platform prerequisites in the [Bevy setup guide](https://bevy.org/learn/quick-start/getting-started/setup/).
 
-```bash
-git clone https://github.com/DSL-21/Echoes-World-Simulator.git
-cd Echoes-World-Simulator
-cargo run --release
-```
+    git clone https://github.com/DSL-21/Echoes-World-Simulator.git
+    cd Echoes-World-Simulator
+    cargo run --release
 
-Run the test suite:
+Run all tests with cargo test.
 
-```bash
-cargo test
-```
+## Architecture
 
-## Technology
+- src/sim/world.rs — coordinates, terrain, provinces and deterministic map generation.
+- src/sim/economy.rs — resource stockpiles, building costs and production.
+- src/sim/diplomacy.rs — treaty state and symmetric relations.
+- src/sim/military.rs — armies, supply, unit classes and combat strength.
+- src/sim/technology.rs — research catalogue and technology prerequisites.
+- src/sim/events.rs — deterministic world-event selection.
+- src/sim/mod.rs — campaign state, turn simulation, AI and player actions.
+- src/persistence.rs — versioned JSON save/load.
+- src/main.rs — Bevy application, rendering, controls and HUD.
 
-- **Rust** — simulation, world generation, economy and rival decision-making.
-- **Bevy 0.20.1** — rendering, input, windowing and UI.
-- **GitHub Actions** — formatting, tests and Windows release builds.
+## Development direction
 
-## Project direction
+The next layers are deeper economic chains, diplomacy and AI negotiation, province governors, more detailed warfare, maritime systems, culture and institutions, scenario setup, campaign settings, improved art/audio and release packaging. Each system is intended to remain testable independently of the renderer.
 
-ECHOES is planned as a systemic strategy sandbox. Future milestones can add deeper diplomacy, wars, trade routes, technologies, cultures, cities, historical events, save/load and larger worlds. The prototype focuses first on making the world readable and the turn loop genuinely playable.
-
-See [CHANGELOG.md](CHANGELOG.md) and [ROADMAP.md](docs/ROADMAP.md) for development progress.
+See docs/ROADMAP.md for the current plan and CHANGELOG.md for implementation history.
 
 ## License
 
-This project is released under the MIT License. See [LICENSE](LICENSE).
+MIT. See LICENSE.
