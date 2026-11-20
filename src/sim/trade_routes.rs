@@ -137,7 +137,7 @@ pub fn reserve_stock(commodity: Commodity, population: u32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sim::{diplomacy::set_symmetric, GameState, PLAYER_ID};
+    use crate::sim::{diplomacy::set_symmetric, PLAYER_ID};
 
     #[test]
     fn land_route_connects_adjacent_partner_city() {
