@@ -49,6 +49,7 @@ fn main() {
                 update_province_borders,
                 update_city_markers,
                 update_army_markers,
+                update_fleet_markers,
                 update_selection_highlight,
                 update_hud,
             )
@@ -80,6 +81,9 @@ struct MainMenuOverlay;
 
 #[derive(Component)]
 struct ArmyVisual(u64);
+
+#[derive(Component)]
+struct FleetVisual(u64);
 
 #[derive(Component)]
 struct SelectionHighlight;
@@ -1878,6 +1882,40 @@ fn update_army_markers(
         if let Some(army) = session.0.armies.iter().find(|army| army.id == marker.0) {
             transform.translation = tile_position(army.position) + Vec3::new(7.0, -7.0, 5.0);
             let color = session.0.factions[army.owner].color;
+            sprite.color = Color::srgb(color[0], color[1], color[2]);
+            *visibility = Visibility::Visible;
+        } else {
+            *visibility = Visibility::Hidden;
+        }
+    }
+}
+
+fn update_fleet_markers(
+    mut commands: Commands,
+    session: Res<Session>,
+    mut markers: Query<(&FleetVisual, &mut Transform, &mut Visibility, &mut Sprite)>,
+) {
+    if !session.is_changed() {
+        return;
+    }
+    let existing: HashSet<u64> = markers.iter_mut().map(|(marker, _, _, _)| marker.0).collect();
+    for fleet in &session.0.naval_fleets {
+        if !existing.contains(&fleet.id) {
+            let color = session.0.factions[fleet.owner].color;
+            commands.spawn((
+                Sprite::from_color(Color::srgb(color[0], color[1], color[2]), Vec2::new(12.0, 5.0)),
+                Transform::from_translation(
+                    tile_position(fleet.position) + Vec3::new(-7.0, 7.0, 5.5),
+                ),
+                FleetVisual(fleet.id),
+                Visibility::Visible,
+            ));
+        }
+    }
+    for (marker, mut transform, mut visibility, mut sprite) in &mut markers {
+        if let Some(fleet) = session.0.naval_fleets.iter().find(|fleet| fleet.id == marker.0) {
+            transform.translation = tile_position(fleet.position) + Vec3::new(-7.0, 7.0, 5.5);
+            let color = session.0.factions[fleet.owner].color;
             sprite.color = Color::srgb(color[0], color[1], color[2]);
             *visibility = Visibility::Visible;
         } else {
