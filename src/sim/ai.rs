@@ -11,6 +11,7 @@ use super::{
 /// Advances the parts of the world that are controlled by rival realms.
 pub fn process_turn(game: &mut GameState) {
     develop_cities(game);
+    develop_ports(game);
     develop_provinces(game);
     simulate_diplomacy(game);
     issue_war_orders(game);
@@ -47,6 +48,45 @@ fn develop_cities(game: &mut GameState) {
         game.factions[faction_id].population += 3;
         let realm = game.factions[faction_id].name.clone();
         game.add_log(format!("{realm} founds a new city: {name}."));
+    }
+}
+
+fn develop_ports(game: &mut GameState) {
+    for faction_id in 1..game.factions.len() {
+        let already_has_port = game.world.coords().into_iter().any(|coord| {
+            game.world.get(coord).is_some_and(|tile| {
+                tile.owner == Some(faction_id)
+                    && tile.city.is_some()
+                    && tile.buildings.contains(&Building::Port)
+            })
+        });
+        if already_has_port {
+            continue;
+        }
+
+        let candidate = game.world.coords().into_iter().filter_map(|coord| {
+            let tile = game.world.get(coord)?;
+            if tile.owner != Some(faction_id)
+                || tile.city.is_none()
+                || !Building::Port.allowed_on(tile.terrain)
+            {
+                return None;
+            }
+            Some((coord, tile.population))
+        }).max_by_key(|(_, population)| *population);
+
+        let Some((coord, _)) = candidate else {
+            continue;
+        };
+        if !game.factions[faction_id].resources.pay(&Building::Port.cost()) {
+            continue;
+        }
+        if let Some(tile) = game.world.get_mut(coord) {
+            tile.buildings.push(Building::Port);
+        }
+        let realm = game.factions[faction_id].name.clone();
+        let city = game.world.get(coord).and_then(|tile| tile.city.clone()).unwrap_or_default();
+        game.add_log(format!("{realm} commissions a new port at {city}."));
     }
 }
 
@@ -356,6 +396,18 @@ fn next_step_toward_enemy(game: &GameState, army: &Army) -> Option<Coord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rival_realms_build_ports_in_coastal_cities() {
+        let mut game = GameState::new(2039);
+        let capital = game.factions[1].capital;
+        game.world.get_mut(capital).unwrap().terrain = super::super::world::Terrain::Coast;
+
+        develop_ports(&mut game);
+
+        assert!(game.world.get(capital).unwrap().buildings.contains(&Building::Port));
+        assert!(game.validate().is_ok());
+    }
 
     #[test]
     fn merchant_personality_makes_trade_proposals_more_likely() {
