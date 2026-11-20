@@ -3,9 +3,9 @@ use std::{cmp::Reverse, collections::{BinaryHeap, HashMap, HashSet, VecDeque}};
 use super::{
     diplomacy::{set_symmetric, Treaty},
     economy::{Building, Resources},
-    military::Army,
+    military::{Army, NavalFleet, UnitClass, recruitment_cost},
     AiPersonality, GameState, PLAYER_ID,
-    world::Coord,
+    world::{Coord, Terrain},
 };
 
 /// Advances the parts of the world that are controlled by rival realms.
@@ -15,6 +15,7 @@ pub fn process_turn(game: &mut GameState) {
     develop_provinces(game);
     simulate_diplomacy(game);
     issue_war_orders(game);
+    process_naval_warfare(game);
 }
 
 fn develop_cities(game: &mut GameState) {
@@ -355,9 +356,162 @@ fn province_movement_cost(game: &GameState, owner: usize, coord: Coord) -> Optio
     Some(if has_road { raw_cost.saturating_sub(7).max(2) } else { raw_cost })
 }
 
+/// Plans and executes amphibious invasions for AI realms at war.
+/// Fleets only sail through navigable tiles and land on a coast adjacent to hostile land.
+fn process_naval_warfare(game: &mut GameState) {
+    for owner in 1..game.factions.len() {
+        let enemies: Vec<usize> = (0..game.factions.len())
+            .filter(|other| *other != owner && game.treaty_between(owner, *other) == Treaty::War)
+            .collect();
+        if enemies.is_empty() {
+            continue;
+        }
+
+        let ports: Vec<Coord> = game.world.coords().into_iter().filter(|coord| {
+            game.world.get(*coord).is_some_and(|tile| {
+                tile.owner == Some(owner)
+                    && tile.city.is_some()
+                    && tile.terrain == Terrain::Coast
+                    && tile.buildings.contains(&Building::Port)
+            })
+        }).collect();
+        if ports.is_empty() {
+            continue;
+        }
+
+        // Recruit at a port when the realm has no army there; this gives the navy
+        // a reliable embarkation point without creating unlimited AI armies.
+        let port_with_army = ports.iter().copied().find(|port| {
+            game.armies.iter().any(|army| {
+                army.owner == owner && army.position == *port && army.embarked_in.is_none()
+            })
+        });
+        let embark_port = if let Some(port) = port_with_army {
+            port
+        } else {
+            if game.army_count(owner) >= 3 || game.turn % 4 != owner as u32 % 4 {
+                continue;
+            }
+            let port = ports[0];
+            let (gold, iron, timber) = recruitment_cost(UnitClass::Infantry);
+            let cost = Resources { gold, iron, timber, ..Default::default() };
+            if !game.factions[owner].resources.pay(&cost) {
+                continue;
+            }
+            let id = game.next_army_id;
+            game.next_army_id += 1;
+            game.armies.push(Army::new(id, owner, port, UnitClass::Infantry));
+            port
+        };
+
+        let fleet_id = if let Some(fleet) = game.naval_fleets.iter().find(|fleet| {
+            fleet.owner == owner && fleet.position == embark_port
+        }) {
+            fleet.id
+        } else {
+            let cost = Resources { gold: 45.0, timber: 30.0, iron: 8.0, ..Default::default() };
+            if !game.factions[owner].resources.pay(&cost) {
+                continue;
+            }
+            let id = game.next_naval_fleet_id;
+            game.next_naval_fleet_id += 1;
+            game.naval_fleets.push(NavalFleet::new(id, owner, embark_port));
+            let realm = game.factions[owner].name.clone();
+            game.add_log(format!("{realm} commissions a transport fleet for an amphibious campaign."));
+            id
+        };
+
+        let capacity = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
+            .map(|fleet| fleet.capacity).unwrap_or(0);
+        let aboard = game.armies.iter().filter(|army| army.embarked_in == Some(fleet_id)).count();
+        if aboard == 0 {
+            if let Some(army) = game.armies.iter_mut().find(|army| {
+                army.owner == owner && army.position == embark_port && army.embarked_in.is_none()
+            }) {
+                if capacity > 0 {
+                    army.embarked_in = Some(fleet_id);
+                    let army_name = army.name.clone();
+                    game.add_log(format!("{army_name} embarks for an amphibious invasion."));
+                }
+            }
+        }
+
+        let fleet_position = match game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id) {
+            Some(fleet) => fleet.position,
+            None => continue,
+        };
+        let Some((landing, first_step)) = find_ai_landing_route(game, owner, &enemies, fleet_position) else {
+            continue;
+        };
+
+        if fleet_position == landing {
+            let mut landed = 0;
+            for army in &mut game.armies {
+                if army.embarked_in == Some(fleet_id) {
+                    army.embarked_in = None;
+                    army.position = landing;
+                    landed += 1;
+                }
+            }
+            if landed > 0 {
+                let realm = game.factions[owner].name.clone();
+                game.add_log(format!("{realm} lands {landed} army unit(s) on a hostile coastline."));
+            }
+        } else if let Some(step) = first_step {
+            if let Some(fleet) = game.naval_fleets.iter_mut().find(|fleet| fleet.id == fleet_id) {
+                fleet.position = step;
+                fleet.supply = (fleet.supply - 1.5).max(0.0);
+            }
+            for army in &mut game.armies {
+                if army.embarked_in == Some(fleet_id) {
+                    army.position = step;
+                }
+            }
+        }
+    }
+}
+
+/// Returns a reachable friendly/neutral coast adjacent to a realm at war and
+/// the first sea step toward it. Hostile provinces themselves are never landing tiles.
+fn find_ai_landing_route(
+    game: &GameState,
+    owner: usize,
+    enemies: &[usize],
+    start: Coord,
+) -> Option<(Coord, Option<Coord>)> {
+    let mut queue = VecDeque::from([(start, None::<Coord>)]);
+    let mut visited = HashSet::from([start]);
+    while let Some((current, first_step)) = queue.pop_front() {
+        let tile = game.world.get(current)?;
+        let safe_landing = tile.terrain == Terrain::Coast
+            && tile.owner.is_none_or(|other| other == owner)
+            && game.world.neighbors(current).iter().any(|neighbor| {
+                game.world.get(*neighbor).is_some_and(|adjacent| {
+                    adjacent.terrain.is_land()
+                        && adjacent.owner.is_some_and(|other| enemies.contains(&other))
+                })
+            });
+        if safe_landing {
+            return Some((current, first_step));
+        }
+        for next in game.world.neighbors(current) {
+            if !visited.insert(next) {
+                continue;
+            }
+            if game.world.get(next).is_some_and(|next_tile| {
+                matches!(next_tile.terrain, Terrain::Ocean | Terrain::Coast)
+                    && next_tile.owner.is_none_or(|other| other == owner)
+            }) {
+                queue.push_back((next, first_step.or(Some(next))));
+            }
+        }
+    }
+    None
+}
+
 fn issue_war_orders(game: &mut GameState) {
     let orders: Vec<(u64, Coord)> = game.armies.iter()
-        .filter(|army| army.owner != PLAYER_ID)
+        .filter(|army| army.owner != PLAYER_ID && army.embarked_in.is_none())
         .filter_map(|army| next_step_toward_enemy(game, army).map(|coord| (army.id, coord)))
         .collect();
 
@@ -477,6 +631,46 @@ mod tests {
         let step = next_step_toward_destination(&game, PLAYER_ID, start, target).unwrap();
         assert_eq!(step.manhattan(start), 1);
         assert!(game.world.get(step).unwrap().terrain.is_land());
+    }
+
+    #[test]
+    fn ai_commissions_fleet_and_lands_troops_across_a_sea_lane() {
+        let mut game = GameState::new(2043);
+        let port = game.factions[1].capital;
+        let sea = Coord::new(port.x - 1, port.y);
+        let landing = Coord::new(port.x - 2, port.y);
+        let enemy_land = Coord::new(port.x - 3, port.y);
+        assert!(game.world.get(enemy_land).is_some());
+
+        {
+            let tile = game.world.get_mut(port).unwrap();
+            tile.terrain = Terrain::Coast;
+            tile.buildings.push(Building::Port);
+        }
+        game.world.get_mut(sea).unwrap().terrain = Terrain::Ocean;
+        {
+            let tile = game.world.get_mut(landing).unwrap();
+            tile.terrain = Terrain::Coast;
+            tile.owner = None;
+        }
+        {
+            let tile = game.world.get_mut(enemy_land).unwrap();
+            tile.terrain = Terrain::Grassland;
+            tile.owner = Some(PLAYER_ID);
+        }
+        game.armies.push(Army::new(1, 1, port, UnitClass::Infantry));
+        game.next_army_id = 2;
+        set_symmetric(&mut game.relations, 1, PLAYER_ID, Treaty::War, game.turn);
+
+        for _ in 0..4 {
+            process_naval_warfare(&mut game);
+        }
+
+        assert!(game.naval_fleets.iter().any(|fleet| fleet.owner == 1));
+        assert!(game.armies.iter().any(|army| {
+            army.owner == 1 && army.position == landing && army.embarked_in.is_none()
+        }));
+        assert!(game.validate().is_ok());
     }
 
     #[test]
