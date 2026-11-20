@@ -651,6 +651,13 @@ fn handle_mouse_selection(
 }
 
 fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
+    if input.just_pressed(KeyCode::F9) {
+        match persistence::load_game(SAVE_PATH) {
+            Ok(loaded) => session.0 = loaded,
+            Err(error) => session.0.add_log(format!("LOAD ERROR — {error}")),
+        }
+        return;
+    }
     let game = &mut session.0;
     if input.just_pressed(KeyCode::Space) {
         game.advance_turn();
@@ -707,12 +714,6 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
         match persistence::save_game(game, SAVE_PATH) {
             Ok(()) => game.add_log("Campaign saved to echoes_save.json."),
             Err(error) => game.add_log(format!("SAVE ERROR — {error}")),
-        }
-    }
-    if input.just_pressed(KeyCode::F9) {
-        match persistence::load_game(SAVE_PATH) {
-            Ok(loaded) => session.0 = loaded,
-            Err(error) => game.add_log(format!("LOAD ERROR — {error}")),
         }
     }
 }
