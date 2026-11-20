@@ -430,6 +430,7 @@ impl GameState {
         let tile = self.world.get_mut(coord).expect("selected province exists");
         tile.city = Some(name.clone());
         tile.population = 3;
+        self.factions[PLAYER_ID].population += 3;
         Self::push_chronicle(
             &mut self.chronicle,
             format!("A new settlement is founded: {name}."),
@@ -749,6 +750,7 @@ impl GameState {
                 .filter(|relation| relation.treaty == Treaty::War)
                 .count() as f32;
             let faction = &mut self.factions[faction_id];
+            let mut population_growth = false;
             let modifiers = faction.government.modifiers().combine(faction.policy.modifiers());
             let tax_multiplier = (1.0 + modifiers.tax).clamp(0.65, 1.5);
             let upkeep_multiplier = (1.0 - modifiers.army_upkeep).clamp(0.5, 1.0);
@@ -767,6 +769,7 @@ impl GameState {
                 faction.population += 1;
                 faction.resources.food -= 5.0;
                 faction.prestige += 0.25;
+                population_growth = true;
             } else if faction.resources.food < 2.0 {
                 faction.population = faction.population.saturating_sub(1).max(1);
                 faction.stability -= 4.0;
@@ -796,6 +799,22 @@ impl GameState {
                 - (faction.unrest - 35.0).max(0.0) * 0.015
                 - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
             faction.war_exhaustion = (faction.war_exhaustion - 0.18).max(0.0);
+
+            if population_growth {
+                let city = self.world.coords().into_iter()
+                    .filter_map(|coord| {
+                        let tile = self.world.get(coord)?;
+                        (tile.owner == Some(faction_id) && tile.city.is_some())
+                            .then_some((coord, tile.population))
+                    })
+                    .min_by_key(|(_, population)| *population)
+                    .map(|(coord, _)| coord);
+                if let Some(coord) = city {
+                    if let Some(tile) = self.world.get_mut(coord) {
+                        tile.population += 1;
+                    }
+                }
+            }
         }
 
         self.progress_research();
@@ -1092,6 +1111,20 @@ mod tests {
             assert!(capital.city.is_some());
         }
         assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn founding_a_city_adds_to_realm_population() {
+        let mut game = GameState::new(2029);
+        let capital = game.factions[PLAYER_ID].capital;
+        let site = game.world.neighbors(capital).into_iter().find(|coord| {
+            game.world.get(*coord).is_some_and(|tile| tile.owner == Some(PLAYER_ID) && tile.city.is_none())
+        }).expect("starting realm has an adjacent non-capital province");
+        game.select(site);
+        let before = game.factions[PLAYER_ID].population;
+        assert!(game.found_city());
+        assert_eq!(game.factions[PLAYER_ID].population, before + 3);
+        assert_eq!(game.world.get(site).unwrap().population, 3);
     }
 
     #[test]

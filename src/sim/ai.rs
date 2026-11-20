@@ -44,6 +44,7 @@ fn develop_cities(game: &mut GameState) {
             tile.city = Some(name.clone());
             tile.population = 3;
         }
+        game.factions[faction_id].population += 3;
         let realm = game.factions[faction_id].name.clone();
         game.add_log(format!("{realm} founds a new city: {name}."));
     }
