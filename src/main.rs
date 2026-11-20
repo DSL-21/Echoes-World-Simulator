@@ -1480,6 +1480,10 @@ fn handle_keyboard(
     if input.just_pressed(KeyCode::KeyJ) {
         game.recruit_army(UnitClass::Siege);
     }
+    if input.just_pressed(KeyCode::KeyQ) { game.build_naval_fleet(); }
+    if input.just_pressed(KeyCode::KeyE) { game.embark_nearest_army(); }
+    if input.just_pressed(KeyCode::KeyD) { game.disembark_armies(); }
+    if input.just_pressed(KeyCode::KeyK) { game.move_nearest_fleet_to_selected(); }
     if input.just_pressed(KeyCode::KeyR) {
         game.start_next_research();
     }
@@ -1619,6 +1623,10 @@ fn handle_ui_activate(
         UiAction::RecruitSiege => {
             game.recruit_army(UnitClass::Siege);
         }
+        UiAction::BuildFleet => { game.build_naval_fleet(); }
+        UiAction::EmbarkArmy => { game.embark_nearest_army(); }
+        UiAction::DisembarkArmy => { game.disembark_armies(); }
+        UiAction::MoveFleet => { game.move_nearest_fleet_to_selected(); }
         UiAction::Research => {
             game.start_next_research();
         }
