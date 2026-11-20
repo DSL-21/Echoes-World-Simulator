@@ -15,15 +15,8 @@ pub enum Technology {
 
 impl Technology {
     pub const ALL: [Self; 9] = [
-        Self::Agriculture,
-        Self::Masonry,
-        Self::Currency,
-        Self::Metallurgy,
-        Self::Statecraft,
-        Self::Logistics,
-        Self::Navigation,
-        Self::Medicine,
-        Self::Printing,
+        Self::Agriculture, Self::Masonry, Self::Currency, Self::Metallurgy,
+        Self::Statecraft, Self::Logistics, Self::Navigation, Self::Medicine, Self::Printing,
     ];
 
     pub fn name(self) -> &'static str {
@@ -87,10 +80,6 @@ mod tests {
                 assert_ne!(*prerequisite, technology);
             }
         }
-        assert!(
-            Technology::Logistics
-                .prerequisites()
-                .contains(&Technology::Metallurgy)
-        );
+        assert!(Technology::Logistics.prerequisites().contains(&Technology::Metallurgy));
     }
 }
