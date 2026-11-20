@@ -716,17 +716,81 @@ impl GameState {
     }
 
     pub fn move_naval_fleet(&mut self, fleet_id: u64, destination: Coord) -> bool {
+        self.move_naval_fleet_for_owner(PLAYER_ID, fleet_id, destination)
+    }
+
+    pub(crate) fn move_naval_fleet_for_owner(&mut self, owner: usize, fleet_id: u64, destination: Coord) -> bool {
         let Some(index) = self.naval_fleets.iter().position(|fleet| fleet.id == fleet_id) else { return false; };
-        if self.naval_fleets[index].owner != PLAYER_ID {
-            self.add_log("You cannot command another realm's transport fleet."); return false;
+        if self.naval_fleets[index].owner != owner {
+            return false;
         }
         let origin = self.naval_fleets[index].position;
-        if origin.manhattan(destination) != 1 || !self.world.get(destination).is_some_and(|tile| matches!(tile.terrain, Terrain::Ocean | Terrain::Coast)) {
-            self.add_log("A transport fleet can sail one adjacent ocean or coastal tile per turn."); return false;
+        if origin.manhattan(destination) != 1
+            || !self.world.get(destination).is_some_and(|tile| matches!(tile.terrain, Terrain::Ocean | Terrain::Coast))
+        {
+            if owner == PLAYER_ID {
+                self.add_log("A transport fleet can sail one adjacent ocean or coastal tile per turn.");
+            }
+            return false;
         }
+
+        if let Some(defender_index) = self.naval_fleets.iter().position(|fleet| {
+            fleet.owner != owner && fleet.position == destination
+        }) {
+            let defender_owner = self.naval_fleets[defender_index].owner;
+            if self.treaty_between(owner, defender_owner) != Treaty::War {
+                if owner == PLAYER_ID {
+                    self.add_log("A foreign fleet blocks this sea tile; naval passage requires peace or victory.");
+                }
+                return false;
+            }
+
+            let attacker_power = self.naval_fleets[index].combat_power();
+            let defender_power = self.naval_fleets[defender_index].combat_power();
+            let attacker_damage = defender_power * 0.48;
+            let defender_damage = attacker_power * 0.48;
+            self.naval_fleets[index].strength = (self.naval_fleets[index].strength - attacker_damage).max(0.0);
+            self.naval_fleets[defender_index].strength = (self.naval_fleets[defender_index].strength - defender_damage).max(0.0);
+
+            let attacker_name = self.naval_fleets[index].name.clone();
+            let defender_name = self.naval_fleets[defender_index].name.clone();
+            let attacker_sunk = self.naval_fleets[index].strength <= 0.0;
+            let defender_sunk = self.naval_fleets[defender_index].strength <= 0.0;
+            self.add_log(format!(
+                "NAVAL BATTLE — {attacker_name} clashes with {defender_name}; hull strength now {:.0} vs {:.0}.",
+                self.naval_fleets[index].strength,
+                self.naval_fleets[defender_index].strength
+            ));
+
+            let mut destroyed = Vec::new();
+            if attacker_sunk { destroyed.push(fleet_id); }
+            if defender_sunk { destroyed.push(self.naval_fleets[defender_index].id); }
+            for lost_id in destroyed {
+                let lost_name = self.naval_fleets.iter().find(|fleet| fleet.id == lost_id)
+                    .map(|fleet| fleet.name.clone()).unwrap_or_else(|| format!("Fleet {lost_id}"));
+                let lost_cargo = self.armies.iter().filter(|army| army.embarked_in == Some(lost_id)).count();
+                self.armies.retain(|army| army.embarked_in != Some(lost_id));
+                self.naval_fleets.retain(|fleet| fleet.id != lost_id);
+                self.add_log(format!(
+                    "FLEET LOST — {lost_name} sinks; {lost_cargo} embarked army unit(s) are lost at sea."
+                ));
+            }
+            if attacker_sunk {
+                return false;
+            }
+            if !defender_sunk {
+                return false;
+            }
+        }
+
+        let Some(index) = self.naval_fleets.iter().position(|fleet| fleet.id == fleet_id) else { return false; };
         self.naval_fleets[index].position = destination;
         self.naval_fleets[index].supply = (self.naval_fleets[index].supply - 1.5).max(0.0);
-        for army in &mut self.armies { if army.embarked_in == Some(fleet_id) { army.position = destination; } }
+        for army in &mut self.armies {
+            if army.embarked_in == Some(fleet_id) {
+                army.position = destination;
+            }
+        }
         let name = self.naval_fleets[index].name.clone();
         self.add_log(format!("{name} sails to {}, {} with its embarked troops.", destination.x + 1, destination.y + 1));
         true
@@ -1580,7 +1644,9 @@ impl GameState {
         let mut fleet_ids = HashSet::new();
         for fleet in &self.naval_fleets {
             if fleet.owner >= self.factions.len() || self.world.get(fleet.position).is_none_or(|tile| !matches!(tile.terrain, Terrain::Ocean | Terrain::Coast))
-                || !fleet_ids.insert(fleet.id) || fleet.capacity == 0 || !fleet.supply.is_finite() || !(0.0..=100.0).contains(&fleet.supply) {
+                || !fleet_ids.insert(fleet.id) || fleet.capacity == 0
+                || !fleet.supply.is_finite() || !(0.0..=100.0).contains(&fleet.supply)
+                || !fleet.strength.is_finite() || !(0.0..=100.0).contains(&fleet.strength) {
                 return Err("A naval fleet in the save file has invalid identity, position, capacity or supply.".to_owned());
             }
             let cargo: Vec<&Army> = self.armies.iter().filter(|army| army.embarked_in == Some(fleet.id)).collect();
@@ -1681,6 +1747,30 @@ mod tests {
         assert!(game.disembark_armies());
         assert_eq!(game.armies[0].position, sea);
         assert_eq!(game.armies[0].embarked_in, None);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn naval_battle_can_sink_a_hostile_fleet_and_its_embarked_cargo() {
+        let mut game = GameState::new(2044);
+        let origin = game.factions[PLAYER_ID].capital;
+        let sea = game.world.neighbors(origin)[0];
+        game.world.get_mut(origin).unwrap().terrain = Terrain::Coast;
+        game.world.get_mut(sea).unwrap().terrain = Terrain::Ocean;
+        game.naval_fleets.push(NavalFleet::new(1, PLAYER_ID, origin));
+        let mut enemy = NavalFleet::new(2, 1, sea);
+        enemy.strength = 12.0;
+        game.naval_fleets.push(enemy);
+        game.armies.push(Army::new(1, 1, sea, UnitClass::Infantry));
+        game.armies[0].embarked_in = Some(2);
+        game.next_naval_fleet_id = 3;
+        game.next_army_id = 2;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+
+        assert!(game.move_naval_fleet(1, sea));
+        assert!(game.naval_fleets.iter().any(|fleet| fleet.id == 1));
+        assert!(!game.naval_fleets.iter().any(|fleet| fleet.id == 2));
+        assert!(game.armies.iter().all(|army| army.embarked_in != Some(2)));
         assert!(game.validate().is_ok());
     }
 
