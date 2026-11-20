@@ -1880,6 +1880,72 @@ mod tests {
     use super::*;
 
     #[test]
+    fn peace_with_reparations_transfers_gold_and_ends_the_war() {
+        let mut game = GameState::new(2061);
+        game.factions[1].resources.gold = 200.0;
+        game.factions[1].war_exhaustion = 30.0;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+        let player_gold = game.factions[PLAYER_ID].resources.gold;
+
+        assert!(game.offer_peace_with_reparations(1));
+        assert!((game.factions[1].resources.gold - 170.0).abs() < 0.001);
+        assert!((game.factions[PLAYER_ID].resources.gold - (player_gold + 30.0)).abs() < 0.001);
+        assert_eq!(game.treaty_between(PLAYER_ID, 1), Treaty::Truce);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn peace_reparations_are_rejected_without_leverage_or_exhaustion() {
+        let mut game = GameState::new(2062);
+        game.factions[1].resources.gold = 200.0;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+        assert!(!game.offer_peace_with_reparations(1));
+        assert_eq!(game.treaty_between(PLAYER_ID, 1), Treaty::War);
+        assert_eq!(game.factions[1].resources.gold, 200.0);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn peace_cession_transfers_border_province_and_population() {
+        let mut game = GameState::new(2063);
+        let province = game.world.neighbors(game.factions[PLAYER_ID].capital).into_iter()
+            .find(|coord| *coord != game.factions[1].capital && game.world.get(*coord).is_some_and(|tile| tile.terrain.is_land()))
+            .expect("player capital should have a land neighbor");
+        let population = 4;
+        let tile = game.world.get_mut(province).unwrap();
+        tile.owner = Some(1);
+        tile.population = population;
+        game.factions[1].population += population;
+        game.factions[1].war_exhaustion = 55.0;
+        game.armies.push(Army::new(1, PLAYER_ID, game.factions[PLAYER_ID].capital, UnitClass::Infantry));
+        game.next_army_id = 2;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+        let player_population = game.factions[PLAYER_ID].population;
+        let enemy_population = game.factions[1].population;
+
+        assert!(game.demand_territory_in_peace(1, province));
+        assert_eq!(game.world.get(province).unwrap().owner, Some(PLAYER_ID));
+        assert_eq!(game.factions[PLAYER_ID].population, player_population + population);
+        assert_eq!(game.factions[1].population, enemy_population - population);
+        assert_eq!(game.treaty_between(PLAYER_ID, 1), Treaty::Truce);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn enemy_capital_cannot_be_taken_as_a_peace_concession() {
+        let mut game = GameState::new(2064);
+        game.factions[1].war_exhaustion = 90.0;
+        game.armies.push(Army::new(1, PLAYER_ID, game.factions[PLAYER_ID].capital, UnitClass::Infantry));
+        game.next_army_id = 2;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+        let capital = game.factions[1].capital;
+        assert!(!game.demand_territory_in_peace(1, capital));
+        assert_eq!(game.world.get(capital).unwrap().owner, Some(1));
+        assert_eq!(game.treaty_between(PLAYER_ID, 1), Treaty::War);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
     fn transport_fleet_embarks_sails_and_disembarks_an_army() {
         let mut game = GameState::new(2041);
         let port = game.factions[PLAYER_ID].capital;
