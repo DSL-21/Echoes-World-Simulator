@@ -47,6 +47,7 @@ fn main() {
                 handle_map_layers,
                 update_tile_visuals,
                 update_province_borders,
+                update_river_visuals,
                 update_city_markers,
                 update_army_markers,
                 update_selection_highlight,
@@ -66,8 +67,11 @@ struct TileVisual(Coord);
 #[derive(Component)]
 struct CityVisual(Coord);
 
-#[derive(Component)]
-struct RiverVisual(Coord);
+#[derive(Component, Clone, Copy)]
+struct RiverVisual {
+    coord: Coord,
+    horizontal: bool,
+}
 
 #[derive(Component, Clone, Copy)]
 struct ProvinceBorder {
@@ -201,58 +205,35 @@ fn setup(mut commands: Commands, session: Res<Session>) {
         ));
         if coord.x + 1 < session.0.world.width {
             let neighbor = Coord::new(coord.x + 1, coord.y);
-            if session.0.world.get(neighbor).is_some_and(|tile| tile.terrain.is_land())
-                && session.0.world.get(coord).is_some_and(|tile| tile.terrain.is_land())
-            {
-                commands.spawn((
-                    Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(2.0, TILE_SIZE)),
-                    Transform::from_translation(position + Vec3::new(TILE_STEP * 0.5, 0.0, 3.3)),
-                    ProvinceBorder { first: coord, second: neighbor },
-                    Visibility::Hidden,
-                ));
-            }
+            commands.spawn((
+                Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(2.0, TILE_SIZE)),
+                Transform::from_translation(position + Vec3::new(TILE_STEP * 0.5, 0.0, 3.3)),
+                ProvinceBorder { first: coord, second: neighbor },
+                Visibility::Hidden,
+            ));
         }
         if coord.y + 1 < session.0.world.height {
             let neighbor = Coord::new(coord.x, coord.y + 1);
-            if session.0.world.get(neighbor).is_some_and(|tile| tile.terrain.is_land())
-                && session.0.world.get(coord).is_some_and(|tile| tile.terrain.is_land())
-            {
-                commands.spawn((
-                    Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(TILE_SIZE, 2.0)),
-                    Transform::from_translation(position + Vec3::new(0.0, -TILE_STEP * 0.5, 3.3)),
-                    ProvinceBorder { first: coord, second: neighbor },
-                    Visibility::Hidden,
-                ));
-            }
+            commands.spawn((
+                Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(TILE_SIZE, 2.0)),
+                Transform::from_translation(position + Vec3::new(0.0, -TILE_STEP * 0.5, 3.3)),
+                ProvinceBorder { first: coord, second: neighbor },
+                Visibility::Hidden,
+            ));
         }
 
-        if session.0.world.get(coord).is_some_and(|tile| tile.river) {
-            let neighbors = session.0.world.neighbors(coord);
-            let has_horizontal = neighbors.iter().any(|neighbor| {
-                neighbor.y == coord.y
-                    && session.0.world.get(*neighbor).is_some_and(|tile| tile.river)
-            });
-            let has_vertical = neighbors.iter().any(|neighbor| {
-                neighbor.x == coord.x
-                    && session.0.world.get(*neighbor).is_some_and(|tile| tile.river)
-            });
-            if has_horizontal || (!has_horizontal && !has_vertical) {
-                commands.spawn((
-                    Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(TILE_SIZE, 3.6)),
-                    Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.7)),
-                    RiverVisual(coord),
-                    Visibility::Visible,
-                ));
-            }
-            if has_vertical {
-                commands.spawn((
-                    Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(3.6, TILE_SIZE)),
-                    Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.71)),
-                    RiverVisual(coord),
-                    Visibility::Visible,
-                ));
-            }
-        }
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(TILE_SIZE, 3.6)),
+            Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.7)),
+            RiverVisual { coord, horizontal: true },
+            Visibility::Hidden,
+        ));
+        commands.spawn((
+            Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(3.6, TILE_SIZE)),
+            Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.71)),
+            RiverVisual { coord, horizontal: false },
+            Visibility::Hidden,
+        ));
     }
 
     commands.spawn((
@@ -1745,8 +1726,17 @@ fn update_province_borders(
         return;
     }
     for (border, mut sprite, mut visibility) in &mut borders {
-        let first_owner = session.0.world.get(border.first).and_then(|tile| tile.owner);
-        let second_owner = session.0.world.get(border.second).and_then(|tile| tile.owner);
+        let first_tile = session.0.world.get(border.first);
+        let second_tile = session.0.world.get(border.second);
+        let both_land = first_tile.is_some_and(|tile| tile.terrain.is_land())
+            && second_tile.is_some_and(|tile| tile.terrain.is_land());
+        if !both_land {
+            *visibility = Visibility::Hidden;
+            continue;
+        }
+
+        let first_owner = first_tile.and_then(|tile| tile.owner);
+        let second_owner = second_tile.and_then(|tile| tile.owner);
         match (first_owner, second_owner) {
             (Some(first), Some(second)) if first != second => {
                 sprite.color = Color::srgba(0.94, 0.75, 0.42, 0.88);
@@ -1760,6 +1750,54 @@ fn update_province_borders(
                 *visibility = Visibility::Hidden;
             }
         }
+    }
+}
+
+fn update_river_visuals(
+    session: Res<Session>,
+    mut rivers: Query<(&RiverVisual, &mut Transform, &mut Visibility)>,
+) {
+    if !session.is_changed() {
+        return;
+    }
+
+    for (marker, mut transform, mut visibility) in &mut rivers {
+        let coord = marker.coord;
+        let Some(tile) = session.0.world.get(coord) else {
+            *visibility = Visibility::Hidden;
+            continue;
+        };
+        if !tile.river {
+            *visibility = Visibility::Hidden;
+            continue;
+        }
+
+        let neighbors = session.0.world.neighbors(coord);
+        let has_horizontal = neighbors.iter().any(|neighbor| {
+            neighbor.y == coord.y
+                && session.0.world.get(*neighbor).is_some_and(|other| other.river)
+        });
+        let has_vertical = neighbors.iter().any(|neighbor| {
+            neighbor.x == coord.x
+                && session.0.world.get(*neighbor).is_some_and(|other| other.river)
+        });
+        let visible = if marker.horizontal {
+            has_horizontal || (!has_horizontal && !has_vertical)
+        } else {
+            has_vertical
+        };
+
+        transform.translation = tile_position(coord)
+            + if marker.horizontal {
+                Vec3::new(0.0, 0.0, 2.7)
+            } else {
+                Vec3::new(0.0, 0.0, 2.71)
+            };
+        *visibility = if visible {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
     }
 }
 
