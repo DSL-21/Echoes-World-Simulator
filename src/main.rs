@@ -87,12 +87,20 @@ enum UiAction {
     LumberMill,
     Quarry,
     Market,
+    IronMine,
+    Library,
+    Barracks,
+    Aqueduct,
     Recruit,
+    RecruitCavalry,
+    RecruitSiege,
     Research,
     Trade,
     War,
     Peace,
     MoveArmy,
+    Save,
+    Load,
 }
 
 fn setup(mut commands: Commands, session: Res<Session>) {
@@ -178,7 +186,7 @@ fn spawn_hud(commands: &mut Commands) {
                 padding: UiRect::all(px(15)),
                 flex_direction: FlexDirection::Column,
                 row_gap: px(8),
-                overflow: Overflow::clip_y(),
+                overflow: Overflow::scroll_y(),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.035, 0.055, 0.078, 0.97)),
@@ -415,6 +423,56 @@ fn spawn_hud(commands: &mut Commands) {
                             row.spawn((
                                 Button,
                                 Hovered::default(),
+                                UiAction::IronMine,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.28, 0.30, 0.35)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("IRON MINE  [5]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Library,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.30, 0.25, 0.43)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("LIBRARY  [6]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Barracks,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.42, 0.22, 0.22)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("BARRACKS  [7]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Aqueduct,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.21, 0.32, 0.40)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("AQUEDUCT  [8]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
                                 UiAction::Recruit,
                                 Node {
                                     width: px(160),
@@ -553,6 +611,57 @@ fn spawn_hud(commands: &mut Commands) {
                         });
                 });
 
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::RecruitCavalry,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.38, 0.28, 0.19)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("CAVALRY  [V]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::RecruitSiege,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.35, 0.30, 0.29)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("SIEGE  [J]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Save,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.19, 0.34, 0.31)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("SAVE CAMPAIGN  [F5]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE))); });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Load,
+                                Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                BackgroundColor(Color::srgb(0.25, 0.29, 0.38)),
+                            ))
+                            .with_children(|b| { b.spawn((Text::new("LOAD CAMPAIGN  [F9]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE))); });
+                        });
+                });
+
             parent.spawn((
                 Text::new("WORLD CHRONICLE"),
                 TextFont::from_font_size(14.0),
@@ -581,7 +690,7 @@ fn spawn_hud(commands: &mut Commands) {
         },
         BackgroundColor(Color::srgba(0.025, 0.043, 0.065, 0.92)),
         Text::new(
-            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–4 DEVELOP  •  B CITY  •  G ARMY",
+            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–8 DEVELOP  •  B CITY  •  G/V/J ARMY",
         ),
         TextFont::from_font_size(10.5),
         TextColor(Color::srgb(0.57, 0.68, 0.72)),
@@ -677,11 +786,29 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
     if input.just_pressed(KeyCode::Digit4) {
         game.build_selected(Building::Market);
     }
+    if input.just_pressed(KeyCode::Digit5) {
+        game.build_selected(Building::IronMine);
+    }
+    if input.just_pressed(KeyCode::Digit6) {
+        game.build_selected(Building::Library);
+    }
+    if input.just_pressed(KeyCode::Digit7) {
+        game.build_selected(Building::Barracks);
+    }
+    if input.just_pressed(KeyCode::Digit8) {
+        game.build_selected(Building::Aqueduct);
+    }
     if input.just_pressed(KeyCode::KeyB) {
         game.found_city();
     }
     if input.just_pressed(KeyCode::KeyG) {
         game.recruit_army(UnitClass::Infantry);
+    }
+    if input.just_pressed(KeyCode::KeyV) {
+        game.recruit_army(UnitClass::Cavalry);
+    }
+    if input.just_pressed(KeyCode::KeyJ) {
+        game.recruit_army(UnitClass::Siege);
     }
     if input.just_pressed(KeyCode::KeyR) {
         game.start_next_research();
@@ -733,6 +860,13 @@ fn handle_ui_activate(
     let Ok(action) = actions.get(event.entity) else {
         return;
     };
+    if matches!(*action, UiAction::Load) {
+        match persistence::load_game(SAVE_PATH) {
+            Ok(loaded) => session.0 = loaded,
+            Err(error) => session.0.add_log(format!("LOAD ERROR — {error}")),
+        }
+        return;
+    }
     let game = &mut session.0;
     match *action {
         UiAction::EndTurn => game.advance_turn(),
@@ -754,8 +888,26 @@ fn handle_ui_activate(
         UiAction::Market => {
             game.build_selected(Building::Market);
         }
+        UiAction::IronMine => {
+            game.build_selected(Building::IronMine);
+        }
+        UiAction::Library => {
+            game.build_selected(Building::Library);
+        }
+        UiAction::Barracks => {
+            game.build_selected(Building::Barracks);
+        }
+        UiAction::Aqueduct => {
+            game.build_selected(Building::Aqueduct);
+        }
         UiAction::Recruit => {
             game.recruit_army(UnitClass::Infantry);
+        }
+        UiAction::RecruitCavalry => {
+            game.recruit_army(UnitClass::Cavalry);
+        }
+        UiAction::RecruitSiege => {
+            game.recruit_army(UnitClass::Siege);
         }
         UiAction::Research => {
             game.start_next_research();
@@ -784,6 +936,13 @@ fn handle_ui_activate(
         UiAction::MoveArmy => {
             game.move_nearest_army_to_selected();
         }
+        UiAction::Save => {
+            match persistence::save_game(game, SAVE_PATH) {
+                Ok(()) => game.add_log("Campaign saved to echoes_save.json."),
+                Err(error) => game.add_log(format!("SAVE ERROR — {error}")),
+            }
+        }
+        UiAction::Load => {}
     }
 }
 
