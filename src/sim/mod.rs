@@ -1483,10 +1483,24 @@ impl GameState {
             }
             if route.path.windows(2).any(|pair| pair[0].manhattan(pair[1]) != 1)
                 || route.path.iter().any(|coord| {
-                    self.world.get(*coord).is_none_or(|tile| !tile.terrain.is_land())
+                    self.world.get(*coord).is_none_or(|tile| match route.route_type {
+                        TradeRouteType::Land => !tile.terrain.is_land(),
+                        TradeRouteType::Maritime => !matches!(tile.terrain, Terrain::Ocean | Terrain::Coast),
+                    })
                 })
             {
-                return Err("A trade route contains an invalid land path.".to_owned());
+                return Err("A trade route contains an invalid path for its route type.".to_owned());
+            }
+            if route.route_type == TradeRouteType::Maritime {
+                let has_port = |coord: Coord, owner: usize| self.world.get(coord).is_some_and(|tile| {
+                    tile.owner == Some(owner)
+                        && tile.city.is_some()
+                        && tile.terrain == Terrain::Coast
+                        && tile.buildings.contains(&Building::Port)
+                });
+                if !has_port(route.origin, route.owner) || !has_port(route.destination, route.partner) {
+                    return Err("A maritime trade route must connect two coastal cities with ports.".to_owned());
+                }
             }
         }
         if self.next_trade_route_id <= self.trade_routes.iter().map(|route| route.id).max().unwrap_or(0) {
