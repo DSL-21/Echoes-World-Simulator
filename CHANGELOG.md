@@ -2,6 +2,8 @@
 
 ## 0.2.0-dev — Simulation foundation
 
+- Added naval transport fleets commissioned at owned coastal ports, two-unit troop capacity, embarkation, sea movement, coastal disembarkation, save validation and dedicated UI controls.
+
 - Added coastal Port construction, sea-lane pathfinding and maritime cargo convoys. Maritime routes require port cities at both ends, receive a capacity bonus, and are validated during save loading; older land-route saves remain compatible.
 
 - Added personality- and military-aware AI diplomacy proposals for trade agreements, alliances and declarations of war, with deterministic acceptance rules and focused tests.

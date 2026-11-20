@@ -851,7 +851,7 @@ impl GameState {
         let nearest = self
             .armies
             .iter()
-            .filter(|army| army.owner == PLAYER_ID && army.position != selected)
+            .filter(|army| army.owner == PLAYER_ID && army.position != selected && army.embarked_in.is_none())
             .filter_map(|army| {
                 let step = ai::next_step_toward_destination(self, PLAYER_ID, army.position, selected)?;
                 Some((army.id, step, army.position.manhattan(selected)))

@@ -1234,6 +1234,25 @@ fn spawn_hud(commands: &mut Commands) {
                         });
 
                     buttons
+                        .spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() })
+                        .with_children(|row| {
+                            for (action, label) in [
+                                (UiAction::BuildFleet, "BUILD FLEET [Q]"),
+                                (UiAction::EmbarkArmy, "EMBARK [E]"),
+                                (UiAction::DisembarkArmy, "DISEMBARK [D]"),
+                                (UiAction::MoveFleet, "SAIL FLEET [K]"),
+                            ] {
+                                row.spawn((
+                                    Button, Hovered::default(), action,
+                                    Node { width: px(118), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                                    BackgroundColor(Color::srgb(0.12, 0.29, 0.38)),
+                                )).with_children(|b| {
+                                    b.spawn((Text::new(label), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                                });
+                            }
+                        });
+
+                    buttons
                         .spawn(Node {
                             flex_direction: FlexDirection::Row,
                             column_gap: px(6),
