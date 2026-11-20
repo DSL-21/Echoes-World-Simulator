@@ -483,15 +483,7 @@ fn process_naval_warfare(game: &mut GameState) {
                 game.add_log(format!("{realm} lands {landed} army unit(s) on a hostile coastline."));
             }
         } else if let Some(step) = first_step {
-            if let Some(fleet) = game.naval_fleets.iter_mut().find(|fleet| fleet.id == fleet_id) {
-                fleet.position = step;
-                fleet.supply = (fleet.supply - 1.5).max(0.0);
-            }
-            for army in &mut game.armies {
-                if army.embarked_in == Some(fleet_id) {
-                    army.position = step;
-                }
-            }
+            game.move_naval_fleet_for_owner(owner, fleet_id, step);
         }
     }
 }
