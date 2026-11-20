@@ -9,8 +9,12 @@ pub struct Coord {
 }
 
 impl Coord {
-    pub const fn new(x: i32, y: i32) -> Self { Self { x, y } }
-    pub fn manhattan(self, other: Self) -> i32 { (self.x - other.x).abs() + (self.y - other.y).abs() }
+    pub const fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+    pub fn manhattan(self, other: Self) -> i32 {
+        (self.x - other.x).abs() + (self.y - other.y).abs()
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -52,7 +56,9 @@ impl Terrain {
         }
     }
 
-    pub fn is_land(self) -> bool { self != Self::Ocean }
+    pub fn is_land(self) -> bool {
+        self != Self::Ocean
+    }
 
     pub fn expansion_value(self) -> f32 {
         match self {
@@ -80,7 +86,14 @@ pub struct Tile {
 
 impl Tile {
     fn new(terrain: Terrain) -> Self {
-        Self { terrain, owner: None, city: None, population: 0, buildings: Vec::new(), discovered: false }
+        Self {
+            terrain,
+            owner: None,
+            city: None,
+            population: 0,
+            buildings: Vec::new(),
+            discovered: false,
+        }
     }
 }
 
@@ -99,7 +112,8 @@ impl WorldMap {
             for x in 0..width {
                 let broad = value_noise(x as f32 * 0.095, y as f32 * 0.095, seed);
                 let detail = value_noise(x as f32 * 0.27 + 41.0, y as f32 * 0.27 - 13.0, seed + 17);
-                let moisture = value_noise(x as f32 * 0.14 - 29.0, y as f32 * 0.14 + 53.0, seed + 31);
+                let moisture =
+                    value_noise(x as f32 * 0.14 - 29.0, y as f32 * 0.14 + 53.0, seed + 31);
                 let nx = (x as f32 / width.max(1) as f32 - 0.5) * 2.0;
                 let ny = (y as f32 / height.max(1) as f32 - 0.5) * 2.0;
                 let continental_bias = 0.14 * (1.0 - (nx * nx * 0.62 + ny * ny * 0.82).sqrt());
@@ -125,23 +139,38 @@ impl WorldMap {
             }
         }
 
-        let mut map = Self { width, height, seed, tiles };
+        let mut map = Self {
+            width,
+            height,
+            seed,
+            tiles,
+        };
         let mut coastline = Vec::new();
         for coord in map.coords() {
             let tile = map.get(coord).expect("coordinate generated inside map");
-            if tile.terrain == Terrain::Ocean && map.neighbors(coord).iter().any(|n| map.get(*n).is_some_and(|t| t.terrain.is_land())) {
+            if tile.terrain == Terrain::Ocean
+                && map
+                    .neighbors(coord)
+                    .iter()
+                    .any(|n| map.get(*n).is_some_and(|t| t.terrain.is_land()))
+            {
                 coastline.push(coord);
             }
         }
         for coord in coastline {
-            if let Some(tile) = map.get_mut(coord) { tile.terrain = Terrain::Coast; }
+            if let Some(tile) = map.get_mut(coord) {
+                tile.terrain = Terrain::Coast;
+            }
         }
         map
     }
 
     pub fn index(&self, coord: Coord) -> Option<usize> {
-        if coord.x < 0 || coord.y < 0 || coord.x >= self.width || coord.y >= self.height { None }
-        else { Some((coord.y * self.width + coord.x) as usize) }
+        if coord.x < 0 || coord.y < 0 || coord.x >= self.width || coord.y >= self.height {
+            None
+        } else {
+            Some((coord.y * self.width + coord.x) as usize)
+        }
     }
 
     pub fn get(&self, coord: Coord) -> Option<&Tile> {
@@ -149,33 +178,50 @@ impl WorldMap {
     }
 
     pub fn get_mut(&mut self, coord: Coord) -> Option<&mut Tile> {
-        self.index(coord).and_then(|index| self.tiles.get_mut(index))
+        self.index(coord)
+            .and_then(|index| self.tiles.get_mut(index))
     }
 
     pub fn coords(&self) -> Vec<Coord> {
-        (0..self.height).flat_map(|y| (0..self.width).map(move |x| Coord::new(x, y))).collect()
+        (0..self.height)
+            .flat_map(|y| (0..self.width).map(move |x| Coord::new(x, y)))
+            .collect()
     }
 
     pub fn neighbors(&self, coord: Coord) -> Vec<Coord> {
-        [Coord::new(1, 0), Coord::new(-1, 0), Coord::new(0, 1), Coord::new(0, -1)]
-            .into_iter()
-            .map(|d| Coord::new(coord.x + d.x, coord.y + d.y))
-            .filter(|p| self.index(*p).is_some())
-            .collect()
+        [
+            Coord::new(1, 0),
+            Coord::new(-1, 0),
+            Coord::new(0, 1),
+            Coord::new(0, -1),
+        ]
+        .into_iter()
+        .map(|d| Coord::new(coord.x + d.x, coord.y + d.y))
+        .filter(|p| self.index(*p).is_some())
+        .collect()
     }
 
     pub fn nearest_land(&self, target: Coord, existing: &[Coord]) -> Coord {
         let mut best = target;
         let mut best_score = f32::MAX;
         for coord in self.coords() {
-            let Some(tile) = self.get(coord) else { continue; };
-            if !tile.terrain.is_land() { continue; }
+            let Some(tile) = self.get(coord) else {
+                continue;
+            };
+            if !tile.terrain.is_land() {
+                continue;
+            }
             let mut score = coord.manhattan(target) as f32;
             for other in existing {
                 let distance = coord.manhattan(*other) as f32;
-                if distance < 8.0 { score += (8.0 - distance) * 6.0; }
+                if distance < 8.0 {
+                    score += (8.0 - distance) * 6.0;
+                }
             }
-            if score < best_score { best_score = score; best = coord; }
+            if score < best_score {
+                best_score = score;
+                best = coord;
+            }
         }
         best
     }
@@ -199,7 +245,8 @@ fn value_noise(x: f32, y: f32, seed: u64) -> f32 {
 
 fn hash01(x: i32, y: i32, seed: u64) -> f32 {
     let mut value = (x as u64).wrapping_mul(0x9E37_79B1_85EB_CA87)
-        ^ (y as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F) ^ seed;
+        ^ (y as u64).wrapping_mul(0xC2B2_AE3D_27D4_EB4F)
+        ^ seed;
     value ^= value >> 30;
     value = value.wrapping_mul(0xBF58_476D_1CE4_E5B9);
     value ^= value >> 27;
@@ -218,7 +265,11 @@ mod tests {
         assert_eq!(map.tiles.len(), 44 * 28);
         assert!(map.tiles.iter().any(|t| t.terrain == Terrain::Ocean));
         assert!(map.tiles.iter().any(|t| t.terrain.is_land()));
-        let distinct = map.tiles.iter().map(|t| t.terrain).collect::<std::collections::HashSet<_>>();
+        let distinct = map
+            .tiles
+            .iter()
+            .map(|t| t.terrain)
+            .collect::<std::collections::HashSet<_>>();
         assert!(distinct.len() >= 4);
     }
 
@@ -226,7 +277,10 @@ mod tests {
     fn map_generation_is_deterministic() {
         let a = WorldMap::generate(30, 20, 123);
         let b = WorldMap::generate(30, 20, 123);
-        assert_eq!(a.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>(), b.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>());
+        assert_eq!(
+            a.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>(),
+            b.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>()
+        );
     }
 
     #[test]

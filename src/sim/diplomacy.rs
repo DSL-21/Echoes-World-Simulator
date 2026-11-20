@@ -30,19 +30,31 @@ pub struct Relation {
 }
 
 impl Default for Relation {
-    fn default() -> Self { Self { opinion: 0, treaty: Treaty::None, changed_turn: 0 } }
+    fn default() -> Self {
+        Self {
+            opinion: 0,
+            treaty: Treaty::None,
+            changed_turn: 0,
+        }
+    }
 }
 
 pub fn new_matrix(faction_count: usize) -> Vec<Vec<Relation>> {
     let mut matrix = vec![vec![Relation::default(); faction_count]; faction_count];
     for (index, row) in matrix.iter_mut().enumerate() {
-        row[index] = Relation { opinion: 100, treaty: Treaty::Alliance, changed_turn: 1 };
+        row[index] = Relation {
+            opinion: 100,
+            treaty: Treaty::Alliance,
+            changed_turn: 1,
+        };
     }
     matrix
 }
 
 pub fn set_symmetric(matrix: &mut [Vec<Relation>], a: usize, b: usize, treaty: Treaty, turn: u32) {
-    if a >= matrix.len() || b >= matrix.len() || a == b { return; }
+    if a >= matrix.len() || b >= matrix.len() || a == b {
+        return;
+    }
     matrix[a][b].treaty = treaty;
     matrix[a][b].changed_turn = turn;
     matrix[b][a].treaty = treaty;

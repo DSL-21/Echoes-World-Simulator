@@ -10,10 +10,10 @@ use std::collections::VecDeque;
 use serde::{Deserialize, Serialize};
 
 use self::{
-    diplomacy::{new_matrix, set_symmetric, Relation, Treaty},
-    economy::{terrain_yield, Building, Resources},
+    diplomacy::{Relation, Treaty, new_matrix, set_symmetric},
+    economy::{Building, Resources, terrain_yield},
     events::WorldEvent,
-    military::{recruitment_cost, Army, UnitClass},
+    military::{Army, UnitClass, recruitment_cost},
     technology::Technology,
     world::{Coord, WorldMap},
 };
@@ -129,7 +129,13 @@ impl GameState {
             capitals.push(capital);
             factions.push(Faction::new(id, name, *color, capital));
 
-            let city_names = ["Aurelia", "Greenhold", "Duskport", "Ivory Crown", "Azure Reach"];
+            let city_names = [
+                "Aurelia",
+                "Greenhold",
+                "Duskport",
+                "Ivory Crown",
+                "Azure Reach",
+            ];
             if let Some(tile) = world.get_mut(capital) {
                 tile.owner = Some(id);
                 tile.city = Some(city_names[id].to_owned());
@@ -139,9 +145,13 @@ impl GameState {
 
             for dy in -1_i32..=1 {
                 for dx in -1_i32..=1 {
-                    if dx.abs() + dy.abs() == 0 { continue; }
+                    if dx.abs() + dy.abs() == 0 {
+                        continue;
+                    }
                     let point = Coord::new(capital.x + dx, capital.y + dy);
-                    let Some(tile) = world.get_mut(point) else { continue; };
+                    let Some(tile) = world.get_mut(point) else {
+                        continue;
+                    };
                     if tile.terrain.is_land() && tile.owner.is_none() {
                         tile.owner = Some(id);
                         tile.discovered = true;
@@ -163,51 +173,88 @@ impl GameState {
             chronicle: VecDeque::new(),
         };
         game.add_log("The age of realms begins. Five powers rise across an uncharted world.");
-        game.add_log("Your council awaits. Expand carefully, develop your provinces and shape history.");
+        game.add_log(
+            "Your council awaits. Expand carefully, develop your provinces and shape history.",
+        );
         game
     }
 
     pub fn add_log(&mut self, message: impl Into<String>) {
         self.chronicle.push_back(message.into());
-        while self.chronicle.len() > 16 { self.chronicle.pop_front(); }
+        while self.chronicle.len() > 16 {
+            self.chronicle.pop_front();
+        }
     }
 
     pub fn select(&mut self, coord: Coord) -> bool {
-        let Some(tile) = self.world.get(coord) else { return false; };
+        let Some(tile) = self.world.get(coord) else {
+            return false;
+        };
         let owner = self.faction_name(tile.owner).to_owned();
-        let label = tile.city.clone().unwrap_or_else(|| tile.terrain.name().to_owned());
+        let label = tile
+            .city
+            .clone()
+            .unwrap_or_else(|| tile.terrain.name().to_owned());
         self.selected = coord;
-        self.add_log(format!("Selected {label} — {}, {} — {owner}.", coord.x + 1, coord.y + 1));
+        self.add_log(format!(
+            "Selected {label} — {}, {} — {owner}.",
+            coord.x + 1,
+            coord.y + 1
+        ));
         true
     }
 
     pub fn owned_count(&self, faction_id: usize) -> usize {
-        self.world.tiles.iter().filter(|tile| tile.owner == Some(faction_id)).count()
+        self.world
+            .tiles
+            .iter()
+            .filter(|tile| tile.owner == Some(faction_id))
+            .count()
     }
 
     pub fn city_count(&self, faction_id: usize) -> usize {
-        self.world.tiles.iter().filter(|tile| tile.owner == Some(faction_id) && tile.city.is_some()).count()
+        self.world
+            .tiles
+            .iter()
+            .filter(|tile| tile.owner == Some(faction_id) && tile.city.is_some())
+            .count()
     }
 
     pub fn army_count(&self, faction_id: usize) -> usize {
-        self.armies.iter().filter(|army| army.owner == faction_id).count()
+        self.armies
+            .iter()
+            .filter(|army| army.owner == faction_id)
+            .count()
     }
 
     pub fn faction_name(&self, faction_id: Option<usize>) -> &str {
-        faction_id.and_then(|id| self.factions.get(id)).map(|f| f.name.as_str()).unwrap_or("Unclaimed")
+        faction_id
+            .and_then(|id| self.factions.get(id))
+            .map(|f| f.name.as_str())
+            .unwrap_or("Unclaimed")
     }
 
     pub fn treaty_between(&self, a: usize, b: usize) -> Treaty {
-        self.relations.get(a).and_then(|row| row.get(b)).map(|r| r.treaty).unwrap_or(Treaty::None)
+        self.relations
+            .get(a)
+            .and_then(|row| row.get(b))
+            .map(|r| r.treaty)
+            .unwrap_or(Treaty::None)
     }
 
     fn adjacent_to_faction(&self, coord: Coord, faction_id: usize) -> bool {
-        self.world.neighbors(coord).iter().any(|neighbor| self.world.get(*neighbor).is_some_and(|tile| tile.owner == Some(faction_id)))
+        self.world.neighbors(coord).iter().any(|neighbor| {
+            self.world
+                .get(*neighbor)
+                .is_some_and(|tile| tile.owner == Some(faction_id))
+        })
     }
 
     pub fn claim_selected(&mut self) -> bool {
         let coord = self.selected;
-        let Some(tile) = self.world.get(coord) else { return false; };
+        let Some(tile) = self.world.get(coord) else {
+            return false;
+        };
         if !tile.terrain.is_land() {
             self.add_log("The deep ocean cannot be claimed without a maritime settlement.");
             return false;
@@ -220,7 +267,11 @@ impl GameState {
             self.add_log("A claim must connect to your existing borders.");
             return false;
         }
-        let cost = Resources { gold: 8.0, influence: 7.0, ..Default::default() };
+        let cost = Resources {
+            gold: 8.0,
+            influence: 7.0,
+            ..Default::default()
+        };
         if !self.factions[PLAYER_ID].resources.pay(&cost) {
             self.add_log("The council lacks the gold or influence to secure this province.");
             return false;
@@ -230,13 +281,18 @@ impl GameState {
             tile.owner = Some(PLAYER_ID);
             tile.discovered = true;
         }
-        self.add_log(format!("New province secured: {}. The borders of the League expand.", terrain.name()));
+        self.add_log(format!(
+            "New province secured: {}. The borders of the League expand.",
+            terrain.name()
+        ));
         true
     }
 
     pub fn build_selected(&mut self, building: Building) -> bool {
         let coord = self.selected;
-        let Some(tile) = self.world.get(coord) else { return false; };
+        let Some(tile) = self.world.get(coord) else {
+            return false;
+        };
         if tile.owner != Some(PLAYER_ID) {
             self.add_log("You can only construct buildings in provinces controlled by your realm.");
             return false;
@@ -251,7 +307,11 @@ impl GameState {
         }
         let terrain = tile.terrain;
         if !building.allowed_on(terrain) {
-            self.add_log(format!("{} cannot be built on {} terrain.", building.name(), terrain.name()));
+            self.add_log(format!(
+                "{} cannot be built on {} terrain.",
+                building.name(),
+                terrain.name()
+            ));
             return false;
         }
         let cost = building.cost();
@@ -259,24 +319,51 @@ impl GameState {
             self.add_log("The treasury does not contain the required construction materials.");
             return false;
         }
-        self.world.get_mut(coord).expect("selected tile exists").buildings.push(building);
-        self.add_log(format!("{} completed in the {} province.", building.name(), terrain.name()));
+        self.world
+            .get_mut(coord)
+            .expect("selected tile exists")
+            .buildings
+            .push(building);
+        self.add_log(format!(
+            "{} completed in the {} province.",
+            building.name(),
+            terrain.name()
+        ));
         true
     }
 
     pub fn found_city(&mut self) -> bool {
         let coord = self.selected;
-        let Some(tile) = self.world.get(coord) else { return false; };
+        let Some(tile) = self.world.get(coord) else {
+            return false;
+        };
         if tile.owner != Some(PLAYER_ID) || tile.city.is_some() {
-            self.add_log("A new city must be founded in an owned province without an existing city.");
+            self.add_log(
+                "A new city must be founded in an owned province without an existing city.",
+            );
             return false;
         }
-        let cost = Resources { food: 8.0, timber: 18.0, stone: 15.0, gold: 28.0, ..Default::default() };
+        let cost = Resources {
+            food: 8.0,
+            timber: 18.0,
+            stone: 15.0,
+            gold: 28.0,
+            ..Default::default()
+        };
         if !self.factions[PLAYER_ID].resources.pay(&cost) {
             self.add_log("Founding a city requires more food, timber, stone and gold.");
             return false;
         }
-        let names = ["Westhaven", "Stoneford", "New Aurelia", "Brightwater", "Highgarden", "Rivermarch", "Dawnspire", "Silverkeep"];
+        let names = [
+            "Westhaven",
+            "Stoneford",
+            "New Aurelia",
+            "Brightwater",
+            "Highgarden",
+            "Rivermarch",
+            "Dawnspire",
+            "Silverkeep",
+        ];
         let name_index = (self.city_count(PLAYER_ID) + self.turn as usize) % names.len();
         let name = names[name_index].to_owned();
         let tile = self.world.get_mut(coord).expect("selected tile exists");
@@ -292,7 +379,12 @@ impl GameState {
             return false;
         }
         let (gold, iron, timber) = recruitment_cost(class);
-        let cost = Resources { gold, iron, timber, ..Default::default() };
+        let cost = Resources {
+            gold,
+            iron,
+            timber,
+            ..Default::default()
+        };
         if !self.factions[PLAYER_ID].resources.pay(&cost) {
             self.add_log("The treasury cannot afford to equip another army.");
             return false;
@@ -306,61 +398,102 @@ impl GameState {
     }
 
     pub fn offer_trade_agreement(&mut self, target: usize) -> bool {
-        if target >= self.factions.len() || target == PLAYER_ID { return false; }
+        if target >= self.factions.len() || target == PLAYER_ID {
+            return false;
+        }
         if self.treaty_between(PLAYER_ID, target) == Treaty::War {
             self.add_log("Trade cannot be negotiated while the two realms are at war.");
             return false;
         }
         if self.relations[PLAYER_ID][target].opinion < -35 {
-            self.add_log(format!("{} rejects the trade proposal. Relations are too hostile.", self.factions[target].name));
+            self.add_log(format!(
+                "{} rejects the trade proposal. Relations are too hostile.",
+                self.factions[target].name
+            ));
             return false;
         }
-        set_symmetric(&mut self.relations, PLAYER_ID, target, Treaty::TradeAgreement, self.turn);
+        set_symmetric(
+            &mut self.relations,
+            PLAYER_ID,
+            target,
+            Treaty::TradeAgreement,
+            self.turn,
+        );
         let opinion = (self.relations[PLAYER_ID][target].opinion + 8).min(100);
         self.relations[PLAYER_ID][target].opinion = opinion;
         self.relations[target][PLAYER_ID].opinion = opinion;
-        self.add_log(format!("A trade agreement is signed with {}.", self.factions[target].name));
+        self.add_log(format!(
+            "A trade agreement is signed with {}.",
+            self.factions[target].name
+        ));
         true
     }
 
     pub fn declare_war(&mut self, target: usize) -> bool {
-        if target >= self.factions.len() || target == PLAYER_ID { return false; }
+        if target >= self.factions.len() || target == PLAYER_ID {
+            return false;
+        }
         if self.treaty_between(PLAYER_ID, target) == Treaty::War {
             self.add_log("This realm is already at war with you.");
             return false;
         }
         let name = self.factions[target].name.clone();
-        set_symmetric(&mut self.relations, PLAYER_ID, target, Treaty::War, self.turn);
+        set_symmetric(
+            &mut self.relations,
+            PLAYER_ID,
+            target,
+            Treaty::War,
+            self.turn,
+        );
         self.relations[PLAYER_ID][target].opinion = -100;
         self.relations[target][PLAYER_ID].opinion = -100;
         self.factions[PLAYER_ID].war_exhaustion += 5.0;
-        self.add_log(format!("WAR DECLARED — the Aurelian League enters a state of war with {name}."));
+        self.add_log(format!(
+            "WAR DECLARED — the Aurelian League enters a state of war with {name}."
+        ));
         true
     }
 
     pub fn offer_peace(&mut self, target: usize) -> bool {
-        if target >= self.factions.len() || target == PLAYER_ID || self.treaty_between(PLAYER_ID, target) != Treaty::War {
+        if target >= self.factions.len()
+            || target == PLAYER_ID
+            || self.treaty_between(PLAYER_ID, target) != Treaty::War
+        {
             self.add_log("There is no active war with that realm to bring to an end.");
             return false;
         }
         let name = self.factions[target].name.clone();
-        set_symmetric(&mut self.relations, PLAYER_ID, target, Treaty::Truce, self.turn);
+        set_symmetric(
+            &mut self.relations,
+            PLAYER_ID,
+            target,
+            Treaty::Truce,
+            self.turn,
+        );
         self.relations[PLAYER_ID][target].opinion = -15;
         self.relations[target][PLAYER_ID].opinion = -15;
-        self.factions[PLAYER_ID].war_exhaustion = (self.factions[PLAYER_ID].war_exhaustion - 15.0).max(0.0);
-        self.add_log(format!("A truce is signed with {name}. The armies fall silent."));
+        self.factions[PLAYER_ID].war_exhaustion =
+            (self.factions[PLAYER_ID].war_exhaustion - 15.0).max(0.0);
+        self.add_log(format!(
+            "A truce is signed with {name}. The armies fall silent."
+        ));
         true
     }
 
     pub fn start_next_research(&mut self) -> bool {
         let faction = &mut self.factions[PLAYER_ID];
         if faction.active_research.is_some() {
-            self.add_log("Research is already underway. Let the scholars finish their current work.");
+            self.add_log(
+                "Research is already underway. Let the scholars finish their current work.",
+            );
             return false;
         }
         let next = Technology::ALL.into_iter().find(|technology| {
             !faction.technologies.contains(technology)
-                && technology.prerequisites().iter().all(|prerequisite| faction.technologies.contains(prerequisite))
+                && technology
+                    .prerequisites()
+                    .iter()
+                    .all(|prerequisite| faction.technologies.contains(prerequisite))
         });
         let Some(technology) = next else {
             self.add_log("All currently known technologies have been researched.");
@@ -368,13 +501,21 @@ impl GameState {
         };
         faction.active_research = Some(technology);
         faction.research_progress = 0.0;
-        self.add_log(format!("Scholars begin researching {}: {}", technology.name(), technology.description()));
+        self.add_log(format!(
+            "Scholars begin researching {}: {}",
+            technology.name(),
+            technology.description()
+        ));
         true
     }
 
     pub fn move_nearest_army_to_selected(&mut self) -> bool {
-        let nearest = self.armies.iter().filter(|army| army.owner == PLAYER_ID)
-            .min_by_key(|army| army.position.manhattan(self.selected)).map(|army| army.id);
+        let nearest = self
+            .armies
+            .iter()
+            .filter(|army| army.owner == PLAYER_ID)
+            .min_by_key(|army| army.position.manhattan(self.selected))
+            .map(|army| army.id);
         let Some(id) = nearest else {
             self.add_log("There is no army available to receive orders.");
             return false;
@@ -383,21 +524,28 @@ impl GameState {
     }
 
     pub fn move_army(&mut self, army_id: u64, destination: Coord) -> bool {
-        let Some(army_index) = self.armies.iter().position(|army| army.id == army_id) else { return false; };
+        let Some(army_index) = self.armies.iter().position(|army| army.id == army_id) else {
+            return false;
+        };
         let attacker_owner = self.armies[army_index].owner;
         let attacker_name = self.armies[army_index].name.clone();
         if self.armies[army_index].position.manhattan(destination) != 1 {
-            self.add_log("Armies can move one adjacent province per turn in this simulation build.");
+            self.add_log(
+                "Armies can move one adjacent province per turn in this simulation build.",
+            );
             return false;
         }
-        let Some(tile) = self.world.get(destination) else { return false; };
+        let Some(tile) = self.world.get(destination) else {
+            return false;
+        };
         if !tile.terrain.is_land() {
             self.add_log("An army cannot cross open ocean without naval transport.");
             return false;
         }
         let target_owner = tile.owner;
         if let Some(owner) = target_owner {
-            if owner != attacker_owner && self.treaty_between(attacker_owner, owner) != Treaty::War {
+            if owner != attacker_owner && self.treaty_between(attacker_owner, owner) != Treaty::War
+            {
                 self.add_log("Entering another realm requires a declaration of war.");
                 return false;
             }
@@ -405,10 +553,15 @@ impl GameState {
 
         if let Some(defender) = target_owner.filter(|owner| *owner != attacker_owner) {
             let attacker_power = self.armies[army_index].combat_power();
-            let defending_armies: f32 = self.armies.iter()
+            let defending_armies: f32 = self
+                .armies
+                .iter()
                 .filter(|other| other.owner == defender && other.position == destination)
-                .map(Army::combat_power).sum();
-            let garrison = self.world.get(destination)
+                .map(Army::combat_power)
+                .sum();
+            let garrison = self
+                .world
+                .get(destination)
                 .map(|t| t.population as f32 * 0.7 + if t.city.is_some() { 25.0 } else { 0.0 })
                 .unwrap_or(0.0);
             let defense_power = 45.0 + defending_armies + garrison;
@@ -418,17 +571,23 @@ impl GameState {
                     tile.owner = Some(attacker_owner);
                     tile.population = (tile.population / 2).max(1);
                 }
-                self.armies.retain(|other| !(other.owner == defender && other.position == destination));
+                self.armies
+                    .retain(|other| !(other.owner == defender && other.position == destination));
                 if let Some(new_index) = self.armies.iter().position(|army| army.id == army_id) {
                     self.armies[new_index].position = destination;
-                    self.armies[new_index].strength = (self.armies[new_index].strength * 0.72).max(20.0);
+                    self.armies[new_index].strength =
+                        (self.armies[new_index].strength * 0.72).max(20.0);
                     self.armies[new_index].experience += 8.0;
                 }
-                self.add_log(format!("VICTORY — {attacker_name} captures a province from {enemy_name}."));
+                self.add_log(format!(
+                    "VICTORY — {attacker_name} captures a province from {enemy_name}."
+                ));
             } else {
                 self.armies[army_index].strength *= 0.48;
                 self.armies[army_index].supply *= 0.65;
-                self.add_log(format!("DEFEAT — the assault against {enemy_name} is repelled."));
+                self.add_log(format!(
+                    "DEFEAT — the assault against {enemy_name} is repelled."
+                ));
                 if self.armies[army_index].strength < 25.0 {
                     self.armies.remove(army_index);
                     self.add_log("The remnants of the defeated army disperse.");
@@ -439,7 +598,11 @@ impl GameState {
 
         self.armies[army_index].position = destination;
         self.armies[army_index].supply = (self.armies[army_index].supply - 4.0).max(0.0);
-        self.add_log(format!("{attacker_name} marches to {}, {}.", destination.x + 1, destination.y + 1));
+        self.add_log(format!(
+            "{attacker_name} marches to {}, {}.",
+            destination.x + 1,
+            destination.y + 1
+        ));
         true
     }
 
@@ -450,16 +613,25 @@ impl GameState {
         for faction_id in 0..self.factions.len() {
             let production = self.calculate_production(faction_id);
             let cities = self.city_count(faction_id) as f32;
-            let army_upkeep: f32 = self.armies.iter().filter(|army| army.owner == faction_id).map(|army| army.strength * 0.035).sum();
+            let army_upkeep: f32 = self
+                .armies
+                .iter()
+                .filter(|army| army.owner == faction_id)
+                .map(|army| army.strength * 0.035)
+                .sum();
             let faction = &mut self.factions[faction_id];
             let consumption = faction.population as f32 * 0.22;
             faction.resources.add(&production);
             faction.resources.food -= consumption;
-            faction.resources.gold += faction.population as f32 * faction.tax_rate * 0.12 + cities * 1.8 - army_upkeep;
+            faction.resources.gold +=
+                faction.population as f32 * faction.tax_rate * 0.12 + cities * 1.8 - army_upkeep;
             faction.resources.influence += 0.8 + cities * 0.55;
             faction.resources.clamp_non_negative();
 
-            if faction.resources.food > faction.population as f32 * 0.85 + 12.0 && faction.stability > 35.0 && self.turn % 3 == 0 {
+            if faction.resources.food > faction.population as f32 * 0.85 + 12.0
+                && faction.stability > 35.0
+                && self.turn % 3 == 0
+            {
                 faction.population += 1;
                 faction.resources.food -= 5.0;
                 faction.prestige += 0.25;
@@ -470,7 +642,8 @@ impl GameState {
             } else {
                 faction.stability = (faction.stability + 0.35).min(100.0);
             }
-            faction.stability = (faction.stability - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
+            faction.stability =
+                (faction.stability - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
             faction.war_exhaustion = (faction.war_exhaustion - 0.18).max(0.0);
         }
 
@@ -483,15 +656,25 @@ impl GameState {
         let provinces = self.owned_count(PLAYER_ID);
         let cities = self.city_count(PLAYER_ID);
         let population = self.factions[PLAYER_ID].population;
-        self.add_log(format!("Year {} — {provinces} provinces, {cities} cities, population {population}.", self.year));
+        self.add_log(format!(
+            "Year {} — {provinces} provinces, {cities} cities, population {population}.",
+            self.year
+        ));
     }
 
     fn calculate_production(&self, faction_id: usize) -> Resources {
         let mut output = Resources::default();
         let faction = &self.factions[faction_id];
-        for tile in self.world.tiles.iter().filter(|tile| tile.owner == Some(faction_id)) {
+        for tile in self
+            .world
+            .tiles
+            .iter()
+            .filter(|tile| tile.owner == Some(faction_id))
+        {
             let mut province = terrain_yield(tile.terrain);
-            for building in &tile.buildings { province.add(&building.yield_bonus()); }
+            for building in &tile.buildings {
+                province.add(&building.yield_bonus());
+            }
             if tile.city.is_some() {
                 province.food += 0.8;
                 province.gold += 1.3;
@@ -499,17 +682,27 @@ impl GameState {
             }
             output.add(&province);
         }
-        if faction.has_technology(Technology::Agriculture) { output.food *= 1.15; }
-        if faction.has_technology(Technology::Currency) { output.gold *= 1.12; }
-        if faction.has_technology(Technology::Metallurgy) { output.iron *= 1.20; }
-        if faction.has_technology(Technology::Printing) { output.science *= 1.20; }
+        if faction.has_technology(Technology::Agriculture) {
+            output.food *= 1.15;
+        }
+        if faction.has_technology(Technology::Currency) {
+            output.gold *= 1.12;
+        }
+        if faction.has_technology(Technology::Metallurgy) {
+            output.iron *= 1.20;
+        }
+        if faction.has_technology(Technology::Printing) {
+            output.science *= 1.20;
+        }
         output
     }
 
     fn progress_research(&mut self) {
         for faction_id in 0..self.factions.len() {
             let active = self.factions[faction_id].active_research;
-            let Some(technology) = active else { continue; };
+            let Some(technology) = active else {
+                continue;
+            };
             let available = self.factions[faction_id].resources.science.min(7.0);
             self.factions[faction_id].resources.science -= available;
             self.factions[faction_id].research_progress += available;
@@ -544,29 +737,46 @@ impl GameState {
                 let faction = &mut self.factions[faction_id];
                 let next = Technology::ALL.into_iter().find(|technology| {
                     !faction.technologies.contains(technology)
-                        && technology.prerequisites().iter().all(|p| faction.technologies.contains(p))
+                        && technology
+                            .prerequisites()
+                            .iter()
+                            .all(|p| faction.technologies.contains(p))
                 });
                 faction.active_research = next;
             }
 
-            let can_expand = self.factions[faction_id].resources.gold >= 8.0 && self.factions[faction_id].resources.influence >= 7.0;
+            let can_expand = self.factions[faction_id].resources.gold >= 8.0
+                && self.factions[faction_id].resources.influence >= 7.0;
             if can_expand {
                 if let Some(coord) = self.best_expansion(faction_id) {
-                    let cost = Resources { gold: 8.0, influence: 7.0, ..Default::default() };
+                    let cost = Resources {
+                        gold: 8.0,
+                        influence: 7.0,
+                        ..Default::default()
+                    };
                     if self.factions[faction_id].resources.pay(&cost) {
-                        if let Some(tile) = self.world.get_mut(coord) { tile.owner = Some(faction_id); tile.discovered = true; }
+                        if let Some(tile) = self.world.get_mut(coord) {
+                            tile.owner = Some(faction_id);
+                            tile.discovered = true;
+                        }
                     }
                 }
             }
 
             if self.turn % 9 == 0 && self.factions[faction_id].resources.gold >= 25.0 {
                 let (gold, iron, timber) = recruitment_cost(UnitClass::Infantry);
-                let cost = Resources { gold, iron, timber, ..Default::default() };
+                let cost = Resources {
+                    gold,
+                    iron,
+                    timber,
+                    ..Default::default()
+                };
                 if self.factions[faction_id].resources.pay(&cost) {
                     let id = self.next_army_id;
                     let position = self.factions[faction_id].capital;
                     self.next_army_id += 1;
-                    self.armies.push(Army::new(id, faction_id, position, UnitClass::Infantry));
+                    self.armies
+                        .push(Army::new(id, faction_id, position, UnitClass::Infantry));
                 }
             }
         }
@@ -575,26 +785,47 @@ impl GameState {
     fn best_expansion(&self, faction_id: usize) -> Option<Coord> {
         let mut best: Option<(Coord, f32)> = None;
         for coord in self.world.coords() {
-            let Some(tile) = self.world.get(coord) else { continue; };
-            if tile.owner.is_some() || !tile.terrain.is_land() || !self.adjacent_to_faction(coord, faction_id) { continue; }
-            let variance = ((coord.x * 17 + coord.y * 31 + faction_id as i32 * 13).rem_euclid(17)) as f32 / 100.0;
+            let Some(tile) = self.world.get(coord) else {
+                continue;
+            };
+            if tile.owner.is_some()
+                || !tile.terrain.is_land()
+                || !self.adjacent_to_faction(coord, faction_id)
+            {
+                continue;
+            }
+            let variance = ((coord.x * 17 + coord.y * 31 + faction_id as i32 * 13).rem_euclid(17))
+                as f32
+                / 100.0;
             let score = tile.terrain.expansion_value() + variance;
-            if best.is_none_or(|(_, current)| score > current) { best = Some((coord, score)); }
+            if best.is_none_or(|(_, current)| score > current) {
+                best = Some((coord, score));
+            }
         }
         best.map(|(coord, _)| coord)
     }
 
     fn update_army_supply(&mut self) {
         for army in &mut self.armies {
-            let supplied = self.world.get(army.position).is_some_and(|tile| tile.owner == Some(army.owner));
-            if supplied { army.supply = (army.supply + 8.0).min(100.0); }
-            else { army.supply = (army.supply - 9.0).max(0.0); }
-            if army.supply < 20.0 { army.strength = (army.strength - 2.0).max(10.0); }
+            let supplied = self
+                .world
+                .get(army.position)
+                .is_some_and(|tile| tile.owner == Some(army.owner));
+            if supplied {
+                army.supply = (army.supply + 8.0).min(100.0);
+            } else {
+                army.supply = (army.supply - 9.0).max(0.0);
+            }
+            if army.supply < 20.0 {
+                army.strength = (army.strength - 2.0).max(10.0);
+            }
         }
     }
 
     fn apply_world_event(&mut self) {
-        let Some(event) = WorldEvent::roll(self.seed, self.turn) else { return; };
+        let Some(event) = WorldEvent::roll(self.seed, self.turn) else {
+            return;
+        };
         let player = &mut self.factions[PLAYER_ID];
         match event {
             WorldEvent::BountifulHarvest => {
@@ -621,11 +852,17 @@ impl GameState {
             }
             WorldEvent::PoliticalScandal => player.stability = (player.stability - 7.0).max(0.0),
         }
-        self.add_log(format!("WORLD EVENT — {}. The realm must adapt to changing fortunes.", event.title()));
+        self.add_log(format!(
+            "WORLD EVENT — {}. The realm must adapt to changing fortunes.",
+            event.title()
+        ));
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        if self.world.width <= 0 || self.world.height <= 0 || self.world.tiles.len() != (self.world.width * self.world.height) as usize {
+        if self.world.width <= 0
+            || self.world.height <= 0
+            || self.world.tiles.len() != (self.world.width * self.world.height) as usize
+        {
             return Err("The saved world map has invalid dimensions.".to_owned());
         }
         if self.factions.is_empty() || PLAYER_ID >= self.factions.len() {
@@ -634,13 +871,25 @@ impl GameState {
         if self.world.get(self.selected).is_none() {
             return Err("The selected province is outside the saved map.".to_owned());
         }
-        if self.relations.len() != self.factions.len() || self.relations.iter().any(|row| row.len() != self.factions.len()) {
+        if self.relations.len() != self.factions.len()
+            || self
+                .relations
+                .iter()
+                .any(|row| row.len() != self.factions.len())
+        {
             return Err("The diplomacy table is inconsistent with the realm list.".to_owned());
         }
-        if self.world.tiles.iter().any(|tile| tile.owner.is_some_and(|owner| owner >= self.factions.len())) {
+        if self
+            .world
+            .tiles
+            .iter()
+            .any(|tile| tile.owner.is_some_and(|owner| owner >= self.factions.len()))
+        {
             return Err("A province refers to a realm that does not exist.".to_owned());
         }
-        if self.armies.iter().any(|army| army.owner >= self.factions.len() || self.world.get(army.position).is_none()) {
+        if self.armies.iter().any(|army| {
+            army.owner >= self.factions.len() || self.world.get(army.position).is_none()
+        }) {
             return Err("An army refers to an invalid realm or province.".to_owned());
         }
         Ok(())
@@ -666,10 +915,17 @@ mod tests {
     #[test]
     fn player_can_claim_connected_neutral_land() {
         let mut game = GameState::new(42);
-        let target = game.world.coords().into_iter().find(|coord| {
-            game.world.get(*coord).is_some_and(|tile| tile.terrain.is_land() && tile.owner.is_none())
-                && game.adjacent_to_faction(*coord, PLAYER_ID)
-        }).expect("generated realm should have an adjacent neutral province");
+        let target = game
+            .world
+            .coords()
+            .into_iter()
+            .find(|coord| {
+                game.world
+                    .get(*coord)
+                    .is_some_and(|tile| tile.terrain.is_land() && tile.owner.is_none())
+                    && game.adjacent_to_faction(*coord, PLAYER_ID)
+            })
+            .expect("generated realm should have an adjacent neutral province");
         game.select(target);
         assert!(game.claim_selected());
         assert_eq!(game.world.get(target).unwrap().owner, Some(PLAYER_ID));
@@ -678,14 +934,29 @@ mod tests {
     #[test]
     fn buildings_spend_resources_and_change_province_state() {
         let mut game = GameState::new(7);
-        let target = game.world.coords().into_iter().find(|coord| {
-            game.world.get(*coord).is_some_and(|tile| tile.owner == Some(PLAYER_ID) && tile.city.is_none() && Building::Farm.allowed_on(tile.terrain))
-        }).expect("starting realm should have a developable province");
+        let target = game
+            .world
+            .coords()
+            .into_iter()
+            .find(|coord| {
+                game.world.get(*coord).is_some_and(|tile| {
+                    tile.owner == Some(PLAYER_ID)
+                        && tile.city.is_none()
+                        && Building::Farm.allowed_on(tile.terrain)
+                })
+            })
+            .expect("starting realm should have a developable province");
         let before = game.factions[PLAYER_ID].resources.timber;
         game.select(target);
         assert!(game.build_selected(Building::Farm));
         assert!(game.factions[PLAYER_ID].resources.timber < before);
-        assert!(game.world.get(target).unwrap().buildings.contains(&Building::Farm));
+        assert!(
+            game.world
+                .get(target)
+                .unwrap()
+                .buildings
+                .contains(&Building::Farm)
+        );
     }
 
     #[test]
@@ -703,11 +974,23 @@ mod tests {
     fn research_completes_and_unlocks_follow_up_technology() {
         let mut game = GameState::new(11);
         assert!(game.start_next_research());
-        assert_eq!(game.factions[PLAYER_ID].active_research, Some(Technology::Agriculture));
-        for _ in 0..35 { game.advance_turn(); }
-        assert!(game.factions[PLAYER_ID].technologies.contains(&Technology::Agriculture));
+        assert_eq!(
+            game.factions[PLAYER_ID].active_research,
+            Some(Technology::Agriculture)
+        );
+        for _ in 0..35 {
+            game.advance_turn();
+        }
+        assert!(
+            game.factions[PLAYER_ID]
+                .technologies
+                .contains(&Technology::Agriculture)
+        );
         assert!(game.start_next_research());
-        assert_eq!(game.factions[PLAYER_ID].active_research, Some(Technology::Masonry));
+        assert_eq!(
+            game.factions[PLAYER_ID].active_research,
+            Some(Technology::Masonry)
+        );
     }
 
     #[test]

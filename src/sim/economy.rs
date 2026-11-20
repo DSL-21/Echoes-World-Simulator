@@ -15,17 +15,31 @@ pub struct Resources {
 
 impl Resources {
     pub fn starting() -> Self {
-        Self { food: 55.0, timber: 42.0, stone: 28.0, iron: 12.0, gold: 90.0, science: 0.0, influence: 32.0 }
+        Self {
+            food: 55.0,
+            timber: 42.0,
+            stone: 28.0,
+            iron: 12.0,
+            gold: 90.0,
+            science: 0.0,
+            influence: 32.0,
+        }
     }
 
     pub fn can_pay(&self, cost: &Self) -> bool {
-        self.food >= cost.food && self.timber >= cost.timber && self.stone >= cost.stone
-            && self.iron >= cost.iron && self.gold >= cost.gold
-            && self.science >= cost.science && self.influence >= cost.influence
+        self.food >= cost.food
+            && self.timber >= cost.timber
+            && self.stone >= cost.stone
+            && self.iron >= cost.iron
+            && self.gold >= cost.gold
+            && self.science >= cost.science
+            && self.influence >= cost.influence
     }
 
     pub fn pay(&mut self, cost: &Self) -> bool {
-        if !self.can_pay(cost) { return false; }
+        if !self.can_pay(cost) {
+            return false;
+        }
         self.food -= cost.food;
         self.timber -= cost.timber;
         self.stone -= cost.stone;
@@ -85,36 +99,105 @@ impl Building {
 
     pub fn cost(self) -> Resources {
         match self {
-            Self::Farm => Resources { timber: 8.0, gold: 4.0, ..Default::default() },
-            Self::LumberMill => Resources { timber: 10.0, stone: 3.0, gold: 5.0, ..Default::default() },
-            Self::Quarry => Resources { timber: 8.0, stone: 4.0, gold: 5.0, ..Default::default() },
-            Self::IronMine => Resources { timber: 12.0, stone: 8.0, gold: 8.0, ..Default::default() },
-            Self::Market => Resources { timber: 10.0, stone: 5.0, gold: 10.0, ..Default::default() },
-            Self::Barracks => Resources { timber: 14.0, stone: 10.0, iron: 3.0, gold: 12.0, ..Default::default() },
-            Self::Library => Resources { timber: 12.0, stone: 8.0, gold: 14.0, ..Default::default() },
-            Self::Aqueduct => Resources { stone: 16.0, gold: 12.0, ..Default::default() },
+            Self::Farm => Resources {
+                timber: 8.0,
+                gold: 4.0,
+                ..Default::default()
+            },
+            Self::LumberMill => Resources {
+                timber: 10.0,
+                stone: 3.0,
+                gold: 5.0,
+                ..Default::default()
+            },
+            Self::Quarry => Resources {
+                timber: 8.0,
+                stone: 4.0,
+                gold: 5.0,
+                ..Default::default()
+            },
+            Self::IronMine => Resources {
+                timber: 12.0,
+                stone: 8.0,
+                gold: 8.0,
+                ..Default::default()
+            },
+            Self::Market => Resources {
+                timber: 10.0,
+                stone: 5.0,
+                gold: 10.0,
+                ..Default::default()
+            },
+            Self::Barracks => Resources {
+                timber: 14.0,
+                stone: 10.0,
+                iron: 3.0,
+                gold: 12.0,
+                ..Default::default()
+            },
+            Self::Library => Resources {
+                timber: 12.0,
+                stone: 8.0,
+                gold: 14.0,
+                ..Default::default()
+            },
+            Self::Aqueduct => Resources {
+                stone: 16.0,
+                gold: 12.0,
+                ..Default::default()
+            },
         }
     }
 
     pub fn allowed_on(self, terrain: Terrain) -> bool {
         match self {
-            Self::Farm | Self::Market | Self::Barracks | Self::Library | Self::Aqueduct => terrain.is_land(),
+            Self::Farm | Self::Market | Self::Barracks | Self::Library | Self::Aqueduct => {
+                terrain.is_land()
+            }
             Self::LumberMill => matches!(terrain, Terrain::Forest | Terrain::Grassland),
-            Self::Quarry => matches!(terrain, Terrain::Mountain | Terrain::Plains | Terrain::Tundra),
+            Self::Quarry => matches!(
+                terrain,
+                Terrain::Mountain | Terrain::Plains | Terrain::Tundra
+            ),
             Self::IronMine => matches!(terrain, Terrain::Mountain | Terrain::Tundra),
         }
     }
 
     pub fn yield_bonus(self) -> Resources {
         match self {
-            Self::Farm => Resources { food: 4.0, ..Default::default() },
-            Self::LumberMill => Resources { timber: 3.5, ..Default::default() },
-            Self::Quarry => Resources { stone: 3.0, ..Default::default() },
-            Self::IronMine => Resources { iron: 2.2, ..Default::default() },
-            Self::Market => Resources { gold: 4.0, ..Default::default() },
-            Self::Barracks => Resources { influence: 0.4, ..Default::default() },
-            Self::Library => Resources { science: 2.5, ..Default::default() },
-            Self::Aqueduct => Resources { food: 1.0, influence: 0.2, ..Default::default() },
+            Self::Farm => Resources {
+                food: 4.0,
+                ..Default::default()
+            },
+            Self::LumberMill => Resources {
+                timber: 3.5,
+                ..Default::default()
+            },
+            Self::Quarry => Resources {
+                stone: 3.0,
+                ..Default::default()
+            },
+            Self::IronMine => Resources {
+                iron: 2.2,
+                ..Default::default()
+            },
+            Self::Market => Resources {
+                gold: 4.0,
+                ..Default::default()
+            },
+            Self::Barracks => Resources {
+                influence: 0.4,
+                ..Default::default()
+            },
+            Self::Library => Resources {
+                science: 2.5,
+                ..Default::default()
+            },
+            Self::Aqueduct => Resources {
+                food: 1.0,
+                influence: 0.2,
+                ..Default::default()
+            },
         }
     }
 }
@@ -122,13 +205,40 @@ impl Building {
 pub fn terrain_yield(terrain: Terrain) -> Resources {
     match terrain {
         Terrain::Ocean => Resources::default(),
-        Terrain::Coast => Resources { food: 0.8, gold: 0.35, ..Default::default() },
-        Terrain::Grassland => Resources { food: 2.4, ..Default::default() },
-        Terrain::Plains => Resources { food: 1.8, gold: 0.15, ..Default::default() },
-        Terrain::Forest => Resources { food: 0.9, timber: 1.7, ..Default::default() },
-        Terrain::Desert => Resources { gold: 0.7, ..Default::default() },
-        Terrain::Mountain => Resources { stone: 1.7, iron: 0.45, ..Default::default() },
-        Terrain::Tundra => Resources { food: 0.55, timber: 0.4, iron: 0.25, ..Default::default() },
+        Terrain::Coast => Resources {
+            food: 0.8,
+            gold: 0.35,
+            ..Default::default()
+        },
+        Terrain::Grassland => Resources {
+            food: 2.4,
+            ..Default::default()
+        },
+        Terrain::Plains => Resources {
+            food: 1.8,
+            gold: 0.15,
+            ..Default::default()
+        },
+        Terrain::Forest => Resources {
+            food: 0.9,
+            timber: 1.7,
+            ..Default::default()
+        },
+        Terrain::Desert => Resources {
+            gold: 0.7,
+            ..Default::default()
+        },
+        Terrain::Mountain => Resources {
+            stone: 1.7,
+            iron: 0.45,
+            ..Default::default()
+        },
+        Terrain::Tundra => Resources {
+            food: 0.55,
+            timber: 0.4,
+            iron: 0.25,
+            ..Default::default()
+        },
     }
 }
 
@@ -147,7 +257,10 @@ mod tests {
     fn payment_is_atomic() {
         let mut stock = Resources::starting();
         let before = stock;
-        let impossible = Resources { gold: 9999.0, ..Default::default() };
+        let impossible = Resources {
+            gold: 9999.0,
+            ..Default::default()
+        };
         assert!(!stock.pay(&impossible));
         assert_eq!(stock, before);
     }

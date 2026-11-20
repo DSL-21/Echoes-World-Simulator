@@ -9,11 +9,11 @@ use bevy::{
     ui_widgets::{Activate, Button},
 };
 use sim::{
+    GameState, PLAYER_ID,
     diplomacy::Treaty,
     economy::Building,
     military::{Army, UnitClass},
     world::{Coord, Terrain},
-    GameState, PLAYER_ID,
 };
 
 const TILE_STEP: f32 = 26.0;
@@ -101,7 +101,10 @@ fn setup(mut commands: Commands, session: Res<Session>) {
     for coord in session.0.world.coords() {
         let position = tile_position(coord);
         commands.spawn((
-            Sprite::from_color(Color::srgb(0.028, 0.046, 0.065), Vec2::splat(TILE_STEP - 1.0)),
+            Sprite::from_color(
+                Color::srgb(0.028, 0.046, 0.065),
+                Vec2::splat(TILE_STEP - 1.0),
+            ),
             Transform::from_translation(position),
         ));
         commands.spawn((
@@ -118,7 +121,10 @@ fn setup(mut commands: Commands, session: Res<Session>) {
     }
 
     commands.spawn((
-        Sprite::from_color(Color::srgba(1.0, 0.83, 0.43, 0.26), Vec2::splat(TILE_STEP - 1.0)),
+        Sprite::from_color(
+            Color::srgba(1.0, 0.83, 0.43, 0.26),
+            Vec2::splat(TILE_STEP - 1.0),
+        ),
         Transform::from_translation(tile_position(session.0.selected) + Vec3::new(0.0, 0.0, 2.0)),
         SelectionHighlight,
     ));
@@ -224,84 +230,345 @@ fn spawn_hud(commands: &mut Commands) {
             ));
 
             parent
-                .spawn(Node { flex_direction: FlexDirection::Column, row_gap: px(5), ..default() })
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(5),
+                    ..default()
+                })
                 .with_children(|buttons| {
-                    buttons.spawn((
-                        Button, Hovered::default(), UiAction::EndTurn,
-                        Node { width: percent(100), height: px(34), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                        BackgroundColor(Color::srgb(0.22, 0.39, 0.42)),
-                    )).with_children(|b| { b.spawn((Text::new("ADVANCE YEAR  [SPACE]"), TextFont::from_font_size(12.0), TextColor(Color::WHITE))); });
+                    buttons
+                        .spawn((
+                            Button,
+                            Hovered::default(),
+                            UiAction::EndTurn,
+                            Node {
+                                width: percent(100),
+                                height: px(34),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.22, 0.39, 0.42)),
+                        ))
+                        .with_children(|b| {
+                            b.spawn((
+                                Text::new("ADVANCE YEAR  [SPACE]"),
+                                TextFont::from_font_size(12.0),
+                                TextColor(Color::WHITE),
+                            ));
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Claim,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.20, 0.32, 0.37)),
-                        )).with_children(|b| { b.spawn((Text::new("CLAIM  [C]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::FoundCity,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.32, 0.34, 0.23)),
-                        )).with_children(|b| { b.spawn((Text::new("FOUND CITY  [B]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Claim,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.20, 0.32, 0.37)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("CLAIM  [C]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::FoundCity,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.32, 0.34, 0.23)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("FOUND CITY  [B]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Farm,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.25, 0.35, 0.25)),
-                        )).with_children(|b| { b.spawn((Text::new("FARM  [1]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::LumberMill,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.18, 0.33, 0.27)),
-                        )).with_children(|b| { b.spawn((Text::new("LUMBER MILL  [2]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Farm,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.25, 0.35, 0.25)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("FARM  [1]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::LumberMill,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.18, 0.33, 0.27)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("LUMBER MILL  [2]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Quarry,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.30, 0.32, 0.36)),
-                        )).with_children(|b| { b.spawn((Text::new("QUARRY  [3]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::Market,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.39, 0.30, 0.21)),
-                        )).with_children(|b| { b.spawn((Text::new("MARKET  [4]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Quarry,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.30, 0.32, 0.36)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("QUARRY  [3]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Market,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.39, 0.30, 0.21)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("MARKET  [4]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Recruit,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.39, 0.22, 0.22)),
-                        )).with_children(|b| { b.spawn((Text::new("RECRUIT  [G]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::Research,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.28, 0.25, 0.42)),
-                        )).with_children(|b| { b.spawn((Text::new("RESEARCH  [R]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Recruit,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.39, 0.22, 0.22)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("RECRUIT  [G]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Research,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.28, 0.25, 0.42)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("RESEARCH  [R]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Trade,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.18, 0.35, 0.35)),
-                        )).with_children(|b| { b.spawn((Text::new("TRADE  [T]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::War,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.43, 0.19, 0.20)),
-                        )).with_children(|b| { b.spawn((Text::new("DECLARE WAR  [X]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Trade,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.18, 0.35, 0.35)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("TRADE  [T]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::War,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.43, 0.19, 0.20)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("DECLARE WAR  [X]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
 
-                    buttons.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(6), ..default() }).with_children(|row| {
-                        row.spawn((Button, Hovered::default(), UiAction::Peace,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.22, 0.35, 0.32)),
-                        )).with_children(|b| { b.spawn((Text::new("OFFER PEACE  [P]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                        row.spawn((Button, Hovered::default(), UiAction::MoveArmy,
-                            Node { width: px(160), height: px(30), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
-                            BackgroundColor(Color::srgb(0.34, 0.28, 0.20)),
-                        )).with_children(|b| { b.spawn((Text::new("MOVE ARMY  [M]"), TextFont::from_font_size(11.0), TextColor(Color::WHITE))); });
-                    });
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::Peace,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.22, 0.35, 0.32)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("OFFER PEACE  [P]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::MoveArmy,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.34, 0.28, 0.20)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("MOVE ARMY  [M]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
                 });
 
-            parent.spawn((Text::new("WORLD CHRONICLE"), TextFont::from_font_size(14.0), TextColor(Color::srgb(0.91, 0.83, 0.61))));
-            parent.spawn((Text::new(""), TextFont::from_font_size(10.5), TextColor(Color::srgb(0.61, 0.72, 0.75)), HudLine::Chronicle));
-            parent.spawn((Text::new("F5 SAVE  •  F9 LOAD  •  T TRADE  •  X WAR  •  P PEACE"), TextFont::from_font_size(9.5), TextColor(Color::srgb(0.39, 0.52, 0.61))));
+            parent.spawn((
+                Text::new("WORLD CHRONICLE"),
+                TextFont::from_font_size(14.0),
+                TextColor(Color::srgb(0.91, 0.83, 0.61)),
+            ));
+            parent.spawn((
+                Text::new(""),
+                TextFont::from_font_size(10.5),
+                TextColor(Color::srgb(0.61, 0.72, 0.75)),
+                HudLine::Chronicle,
+            ));
+            parent.spawn((
+                Text::new("F5 SAVE  •  F9 LOAD  •  T TRADE  •  X WAR  •  P PEACE"),
+                TextFont::from_font_size(9.5),
+                TextColor(Color::srgb(0.39, 0.52, 0.61)),
+            ));
         });
 
     commands.spawn((
@@ -313,7 +580,9 @@ fn spawn_hud(commands: &mut Commands) {
             ..default()
         },
         BackgroundColor(Color::srgba(0.025, 0.043, 0.065, 0.92)),
-        Text::new("LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–4 DEVELOP  •  B CITY  •  G ARMY"),
+        Text::new(
+            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–4 DEVELOP  •  B CITY  •  G ARMY",
+        ),
         TextFont::from_font_size(10.5),
         TextColor(Color::srgb(0.57, 0.68, 0.72)),
     ));
@@ -325,10 +594,18 @@ fn handle_camera(
     mut camera: Single<&mut Transform, With<Camera2d>>,
 ) {
     let mut direction = Vec2::ZERO;
-    if input.pressed(KeyCode::KeyA) { direction.x -= 1.0; }
-    if input.pressed(KeyCode::KeyD) { direction.x += 1.0; }
-    if input.pressed(KeyCode::KeyW) { direction.y += 1.0; }
-    if input.pressed(KeyCode::KeyS) { direction.y -= 1.0; }
+    if input.pressed(KeyCode::KeyA) {
+        direction.x -= 1.0;
+    }
+    if input.pressed(KeyCode::KeyD) {
+        direction.x += 1.0;
+    }
+    if input.pressed(KeyCode::KeyW) {
+        direction.y += 1.0;
+    }
+    if input.pressed(KeyCode::KeyS) {
+        direction.y -= 1.0;
+    }
     if direction.length_squared() > 0.0 {
         let zoom = camera.scale.x.max(0.35);
         let movement = direction.normalize() * (620.0 * zoom * time.delta_secs());
@@ -337,8 +614,12 @@ fn handle_camera(
     }
 
     let mut zoom = camera.scale.x;
-    if input.just_pressed(KeyCode::Equal) || input.just_pressed(KeyCode::NumpadAdd) { zoom *= 0.88; }
-    if input.just_pressed(KeyCode::Minus) || input.just_pressed(KeyCode::NumpadSubtract) { zoom *= 1.14; }
+    if input.just_pressed(KeyCode::Equal) || input.just_pressed(KeyCode::NumpadAdd) {
+        zoom *= 0.88;
+    }
+    if input.just_pressed(KeyCode::Minus) || input.just_pressed(KeyCode::NumpadSubtract) {
+        zoom *= 1.14;
+    }
     zoom = zoom.clamp(0.45, 2.2);
     camera.scale = Vec3::splat(zoom);
 }
@@ -349,11 +630,19 @@ fn handle_mouse_selection(
     camera: Single<(&Camera, &GlobalTransform)>,
     mut session: ResMut<Session>,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) { return; }
-    let Some(cursor) = window.cursor_position() else { return; };
-    if cursor.x > window.width() - 385.0 || cursor.y < 70.0 { return; }
+    if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+    let Some(cursor) = window.cursor_position() else {
+        return;
+    };
+    if cursor.x > window.width() - 385.0 || cursor.y < 70.0 {
+        return;
+    }
     let (camera, camera_transform) = *camera;
-    let Ok(position) = camera.viewport_to_world_2d(camera_transform, cursor) else { return; };
+    let Ok(position) = camera.viewport_to_world_2d(camera_transform, cursor) else {
+        return;
+    };
     let width = session.0.world.width;
     let height = session.0.world.height;
     let x = ((position.x - MAP_CENTER.x) / TILE_STEP + (width - 1) as f32 / 2.0).round() as i32;
@@ -363,27 +652,56 @@ fn handle_mouse_selection(
 
 fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
     let game = &mut session.0;
-    if input.just_pressed(KeyCode::Space) { game.advance_turn(); }
-    if input.just_pressed(KeyCode::KeyC) { game.claim_selected(); }
-    if input.just_pressed(KeyCode::Digit1) { game.build_selected(Building::Farm); }
-    if input.just_pressed(KeyCode::Digit2) { game.build_selected(Building::LumberMill); }
-    if input.just_pressed(KeyCode::Digit3) { game.build_selected(Building::Quarry); }
-    if input.just_pressed(KeyCode::Digit4) { game.build_selected(Building::Market); }
-    if input.just_pressed(KeyCode::KeyB) { game.found_city(); }
-    if input.just_pressed(KeyCode::KeyG) { game.recruit_army(UnitClass::Infantry); }
-    if input.just_pressed(KeyCode::KeyR) { game.start_next_research(); }
-    if input.just_pressed(KeyCode::KeyM) { game.move_nearest_army_to_selected(); }
+    if input.just_pressed(KeyCode::Space) {
+        game.advance_turn();
+    }
+    if input.just_pressed(KeyCode::KeyC) {
+        game.claim_selected();
+    }
+    if input.just_pressed(KeyCode::Digit1) {
+        game.build_selected(Building::Farm);
+    }
+    if input.just_pressed(KeyCode::Digit2) {
+        game.build_selected(Building::LumberMill);
+    }
+    if input.just_pressed(KeyCode::Digit3) {
+        game.build_selected(Building::Quarry);
+    }
+    if input.just_pressed(KeyCode::Digit4) {
+        game.build_selected(Building::Market);
+    }
+    if input.just_pressed(KeyCode::KeyB) {
+        game.found_city();
+    }
+    if input.just_pressed(KeyCode::KeyG) {
+        game.recruit_army(UnitClass::Infantry);
+    }
+    if input.just_pressed(KeyCode::KeyR) {
+        game.start_next_research();
+    }
+    if input.just_pressed(KeyCode::KeyM) {
+        game.move_nearest_army_to_selected();
+    }
     if input.just_pressed(KeyCode::KeyT) {
-        if let Some(target) = selected_foreign_owner(game) { game.offer_trade_agreement(target); }
-        else { game.add_log("Select a province belonging to another realm before negotiating."); }
+        if let Some(target) = selected_foreign_owner(game) {
+            game.offer_trade_agreement(target);
+        } else {
+            game.add_log("Select a province belonging to another realm before negotiating.");
+        }
     }
     if input.just_pressed(KeyCode::KeyX) {
-        if let Some(target) = selected_foreign_owner(game) { game.declare_war(target); }
-        else { game.add_log("Select a foreign province to identify a diplomatic target."); }
+        if let Some(target) = selected_foreign_owner(game) {
+            game.declare_war(target);
+        } else {
+            game.add_log("Select a foreign province to identify a diplomatic target.");
+        }
     }
     if input.just_pressed(KeyCode::KeyP) {
-        if let Some(target) = selected_foreign_owner(game) { game.offer_peace(target); }
-        else { game.add_log("Select a foreign province to negotiate peace."); }
+        if let Some(target) = selected_foreign_owner(game) {
+            game.offer_peace(target);
+        } else {
+            game.add_log("Select a foreign province to negotiate peace.");
+        }
     }
     if input.just_pressed(KeyCode::F5) {
         match persistence::save_game(game, SAVE_PATH) {
@@ -400,7 +718,10 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
 }
 
 fn selected_foreign_owner(game: &GameState) -> Option<usize> {
-    game.world.get(game.selected).and_then(|tile| tile.owner).filter(|owner| *owner != PLAYER_ID)
+    game.world
+        .get(game.selected)
+        .and_then(|tile| tile.owner)
+        .filter(|owner| *owner != PLAYER_ID)
 }
 
 fn handle_ui_activate(
@@ -408,36 +729,67 @@ fn handle_ui_activate(
     mut session: ResMut<Session>,
     actions: Query<&UiAction>,
 ) {
-    let Ok(action) = actions.get(event.entity) else { return; };
+    let Ok(action) = actions.get(event.entity) else {
+        return;
+    };
     let game = &mut session.0;
     match *action {
         UiAction::EndTurn => game.advance_turn(),
-        UiAction::Claim => { game.claim_selected(); }
-        UiAction::FoundCity => { game.found_city(); }
-        UiAction::Farm => { game.build_selected(Building::Farm); }
-        UiAction::LumberMill => { game.build_selected(Building::LumberMill); }
-        UiAction::Quarry => { game.build_selected(Building::Quarry); }
-        UiAction::Market => { game.build_selected(Building::Market); }
-        UiAction::Recruit => { game.recruit_army(UnitClass::Infantry); }
-        UiAction::Research => { game.start_next_research(); }
+        UiAction::Claim => {
+            game.claim_selected();
+        }
+        UiAction::FoundCity => {
+            game.found_city();
+        }
+        UiAction::Farm => {
+            game.build_selected(Building::Farm);
+        }
+        UiAction::LumberMill => {
+            game.build_selected(Building::LumberMill);
+        }
+        UiAction::Quarry => {
+            game.build_selected(Building::Quarry);
+        }
+        UiAction::Market => {
+            game.build_selected(Building::Market);
+        }
+        UiAction::Recruit => {
+            game.recruit_army(UnitClass::Infantry);
+        }
+        UiAction::Research => {
+            game.start_next_research();
+        }
         UiAction::Trade => {
-            if let Some(target) = selected_foreign_owner(game) { game.offer_trade_agreement(target); }
-            else { game.add_log("Select a foreign province before proposing a trade agreement."); }
+            if let Some(target) = selected_foreign_owner(game) {
+                game.offer_trade_agreement(target);
+            } else {
+                game.add_log("Select a foreign province before proposing a trade agreement.");
+            }
         }
         UiAction::War => {
-            if let Some(target) = selected_foreign_owner(game) { game.declare_war(target); }
-            else { game.add_log("Select a foreign province before declaring war."); }
+            if let Some(target) = selected_foreign_owner(game) {
+                game.declare_war(target);
+            } else {
+                game.add_log("Select a foreign province before declaring war.");
+            }
         }
         UiAction::Peace => {
-            if let Some(target) = selected_foreign_owner(game) { game.offer_peace(target); }
-            else { game.add_log("Select a foreign province before offering peace."); }
+            if let Some(target) = selected_foreign_owner(game) {
+                game.offer_peace(target);
+            } else {
+                game.add_log("Select a foreign province before offering peace.");
+            }
         }
-        UiAction::MoveArmy => { game.move_nearest_army_to_selected(); }
+        UiAction::MoveArmy => {
+            game.move_nearest_army_to_selected();
+        }
     }
 }
 
 fn update_tile_visuals(session: Res<Session>, mut visuals: Query<(&TileVisual, &mut Sprite)>) {
-    if !session.is_changed() { return; }
+    if !session.is_changed() {
+        return;
+    }
     for (visual, mut sprite) in &mut visuals {
         if let Some(tile) = session.0.world.get(visual.0) {
             let mut rgb = tile.terrain.color();
@@ -462,7 +814,9 @@ fn update_city_markers(
     session: Res<Session>,
     mut markers: Query<(&CityVisual, &mut Transform, &mut Visibility)>,
 ) {
-    if !session.is_changed() { return; }
+    if !session.is_changed() {
+        return;
+    }
     for (marker, mut transform, mut visibility) in &mut markers {
         if let Some(tile) = session.0.world.get(marker.0) {
             if tile.city.is_some() {
@@ -480,14 +834,18 @@ fn update_army_markers(
     session: Res<Session>,
     mut markers: Query<(&ArmyVisual, &mut Transform, &mut Visibility, &mut Sprite)>,
 ) {
-    if !session.is_changed() { return; }
+    if !session.is_changed() {
+        return;
+    }
     let existing: HashSet<u64> = markers.iter().map(|(marker, _, _, _)| marker.0).collect();
     for army in &session.0.armies {
         if !existing.contains(&army.id) {
             let color = session.0.factions[army.owner].color;
             commands.spawn((
                 Sprite::from_color(Color::srgb(color[0], color[1], color[2]), Vec2::splat(8.0)),
-                Transform::from_translation(tile_position(army.position) + Vec3::new(7.0, -7.0, 5.0)),
+                Transform::from_translation(
+                    tile_position(army.position) + Vec3::new(7.0, -7.0, 5.0),
+                ),
                 ArmyVisual(army.id),
                 Visibility::Visible,
             ));
@@ -515,37 +873,76 @@ fn update_selection_highlight(
 }
 
 fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
-    if !session.is_changed() { return; }
+    if !session.is_changed() {
+        return;
+    }
     let game = &session.0;
     let player = &game.factions[PLAYER_ID];
     let target = selected_foreign_owner(game);
     for (mut text, line) in &mut labels {
         **text = match line {
-            HudLine::Header => format!("THE LIVING WORLD  •  YEAR {}  •  TURN {}", game.year, game.turn),
+            HudLine::Header => format!(
+                "THE LIVING WORLD  •  YEAR {}  •  TURN {}",
+                game.year, game.turn
+            ),
             HudLine::Resources => format!(
                 "FOOD {:>5.0}   TIMBER {:>5.0}   STONE {:>5.0}\nIRON {:>5.0}   GOLD {:>5.0}   SCIENCE {:>5.0}   INFLUENCE {:>5.0}",
-                player.resources.food, player.resources.timber, player.resources.stone,
-                player.resources.iron, player.resources.gold, player.resources.science, player.resources.influence
+                player.resources.food,
+                player.resources.timber,
+                player.resources.stone,
+                player.resources.iron,
+                player.resources.gold,
+                player.resources.science,
+                player.resources.influence
             ),
             HudLine::Realm => format!(
                 "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\nSTABILITY {:.0}%  •  PRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",
-                player.population, game.owned_count(PLAYER_ID), game.city_count(PLAYER_ID), game.army_count(PLAYER_ID),
-                player.stability, player.prestige, player.war_exhaustion
+                player.population,
+                game.owned_count(PLAYER_ID),
+                game.city_count(PLAYER_ID),
+                game.army_count(PLAYER_ID),
+                player.stability,
+                player.prestige,
+                player.war_exhaustion
             ),
             HudLine::Selected => {
                 if let Some(tile) = game.world.get(game.selected) {
                     let city = tile.city.as_deref().unwrap_or("No city");
-                    let buildings = if tile.buildings.is_empty() { "None".to_owned() } else { tile.buildings.iter().map(|b| b.name()).collect::<Vec<_>>().join(", ") };
-                    format!("{}  •  {}, {}\nOwner: {}\nSettlement: {}  •  Population: {}\nBuildings: {}",
-                        tile.terrain.name(), game.selected.x + 1, game.selected.y + 1, game.faction_name(tile.owner), city, tile.population, buildings)
-                } else { "No province selected".to_owned() }
+                    let buildings = if tile.buildings.is_empty() {
+                        "None".to_owned()
+                    } else {
+                        tile.buildings
+                            .iter()
+                            .map(|b| b.name())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    };
+                    format!(
+                        "{}  •  {}, {}\nOwner: {}\nSettlement: {}  •  Population: {}\nBuildings: {}",
+                        tile.terrain.name(),
+                        game.selected.x + 1,
+                        game.selected.y + 1,
+                        game.faction_name(tile.owner),
+                        city,
+                        tile.population,
+                        buildings
+                    )
+                } else {
+                    "No province selected".to_owned()
+                }
             }
             HudLine::Politics => {
                 if let Some(target) = target {
                     let relation = &game.relations[PLAYER_ID][target];
-                    format!("Target: {}\nStatus: {}  •  Opinion: {}\n[T] trade  [X] war  [P] peace",
-                        game.factions[target].name, relation.treaty.label(), relation.opinion)
-                } else { "Select a foreign province to inspect relations and negotiate.".to_owned() }
+                    format!(
+                        "Target: {}\nStatus: {}  •  Opinion: {}\n[T] trade  [X] war  [P] peace",
+                        game.factions[target].name,
+                        relation.treaty.label(),
+                        relation.opinion
+                    )
+                } else {
+                    "Select a foreign province to inspect relations and negotiate.".to_owned()
+                }
             }
             HudLine::Chronicle => {
                 let mut output = String::new();
@@ -583,10 +980,19 @@ mod tests {
     #[test]
     fn every_terrain_has_a_visible_color() {
         let colors = [
-            Terrain::Ocean.color(), Terrain::Coast.color(), Terrain::Grassland.color(),
-            Terrain::Plains.color(), Terrain::Forest.color(), Terrain::Desert.color(),
-            Terrain::Mountain.color(), Terrain::Tundra.color(),
+            Terrain::Ocean.color(),
+            Terrain::Coast.color(),
+            Terrain::Grassland.color(),
+            Terrain::Plains.color(),
+            Terrain::Forest.color(),
+            Terrain::Desert.color(),
+            Terrain::Mountain.color(),
+            Terrain::Tundra.color(),
         ];
-        assert!(colors.iter().all(|rgb| rgb.iter().all(|channel| (0.0..=1.0).contains(channel))));
+        assert!(
+            colors
+                .iter()
+                .all(|rgb| rgb.iter().all(|channel| (0.0..=1.0).contains(channel)))
+        );
     }
 }
