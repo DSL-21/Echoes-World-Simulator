@@ -72,6 +72,7 @@ struct SelectionHighlight;
 enum HudLine {
     Header,
     Resources,
+    Market,
     Realm,
     Selected,
     Politics,
@@ -203,6 +204,17 @@ fn spawn_hud(commands: &mut Commands) {
                 TextFont::from_font_size(12.5),
                 TextColor(Color::srgb(0.70, 0.80, 0.82)),
                 HudLine::Resources,
+            ));
+            parent.spawn((
+                Text::new("WORLD MARKET"),
+                TextFont::from_font_size(13.0),
+                TextColor(Color::srgb(0.91, 0.83, 0.61)),
+            ));
+            parent.spawn((
+                Text::new(""),
+                TextFont::from_font_size(11.0),
+                TextColor(Color::srgb(0.63, 0.75, 0.77)),
+                HudLine::Market,
             ));
             parent.spawn((
                 Text::new(""),
@@ -1092,6 +1104,13 @@ fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
                 player.resources.gold,
                 player.resources.science,
                 player.resources.influence
+            ),
+            HudLine::Market => format!(
+                "FOOD {:.2}  •  TIMBER {:.2}\nSTONE {:.2}  •  IRON {:.2}",
+                game.market.food_price,
+                game.market.timber_price,
+                game.market.stone_price,
+                game.market.iron_price
             ),
             HudLine::Realm => format!(
                 "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\n{}  •  {}\nSTABILITY {:.0}%  •  UNREST {:.0}%  •  LEGITIMACY {:.0}%\nPRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",

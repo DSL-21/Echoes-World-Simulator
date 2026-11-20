@@ -29,11 +29,12 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Government types and civic policies with economic/stability effects
 - [x] Legitimacy, unrest pressure and province revolt resolution
 - [x] Player national reform action with resource cost and cooldown
+- [x] Global commodity market with supply/demand price movement and trade-income effects
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests
 
 ## 0.3 — Grand strategy systems
-- [ ] Multi-step production chains and market prices
+- [ ] Multi-step production chains, resource-specific market selling and price-sensitive trade contracts
 - [ ] Trade routes, ports and maritime transport
 - [ ] Diplomacy AI: proposals, alliances, guarantees and demands
 - [ ] War goals, peace terms, occupations and sieges

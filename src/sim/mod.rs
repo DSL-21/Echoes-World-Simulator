@@ -2,6 +2,7 @@ pub mod ai;
 pub mod diplomacy;
 pub mod economy;
 pub mod events;
+pub mod market;
 pub mod military;
 pub mod society;
 pub mod technology;
@@ -15,6 +16,7 @@ use self::{
     diplomacy::{Relation, Treaty, new_matrix, set_symmetric},
     economy::{Building, Resources, terrain_yield},
     events::WorldEvent,
+    market::MarketState,
     military::{Army, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
@@ -116,6 +118,8 @@ pub struct GameState {
     pub factions: Vec<Faction>,
     pub relations: Vec<Vec<Relation>>,
     pub armies: Vec<Army>,
+    #[serde(default)]
+    pub market: MarketState,
     pub selected: Coord,
     pub turn: u32,
     pub year: u32,
@@ -184,6 +188,7 @@ impl GameState {
             factions,
             relations: new_matrix(definitions.len()),
             armies: Vec::new(),
+            market: MarketState::default(),
             selected: capitals[PLAYER_ID],
             turn: 1,
             year: 1200,
@@ -738,6 +743,7 @@ impl GameState {
     pub fn advance_turn(&mut self) {
         self.turn += 1;
         self.year += 1;
+        self.refresh_market();
 
         for faction_id in 0..self.factions.len() {
             let production = self.calculate_production(faction_id);
@@ -922,6 +928,26 @@ impl GameState {
         }
     }
 
+    fn refresh_market(&mut self) {
+        let mut supply = Resources::default();
+        let mut demand = Resources::default();
+
+        for faction_id in 0..self.factions.len() {
+            supply.add(&self.calculate_production(faction_id));
+            let population = self.factions[faction_id].population as f32;
+            let cities = self.city_count(faction_id) as f32;
+            let provinces = self.owned_count(faction_id) as f32;
+            let armies = self.army_count(faction_id) as f32;
+
+            demand.food += population * 0.22;
+            demand.timber += population * 0.025 + cities * 0.35;
+            demand.stone += cities * 0.32 + provinces * 0.012;
+            demand.iron += armies * 0.42 + cities * 0.10;
+        }
+
+        self.market.update(supply, demand);
+    }
+
     fn update_trade_income(&mut self) {
         for a in 0..self.factions.len() {
             for b in (a + 1)..self.factions.len() {
@@ -930,8 +956,9 @@ impl GameState {
                         .combine(self.factions[a].policy.modifiers());
                     let b_modifiers = self.factions[b].government.modifiers()
                         .combine(self.factions[b].policy.modifiers());
-                    self.factions[a].resources.gold += 1.2 + a_modifiers.trade_income;
-                    self.factions[b].resources.gold += 1.2 + b_modifiers.trade_income;
+                    let market_yield = 0.8 + self.market.trade_index() * 0.35;
+                    self.factions[a].resources.gold += market_yield + a_modifiers.trade_income;
+                    self.factions[b].resources.gold += market_yield + b_modifiers.trade_income;
                     let opinion = (self.relations[a][b].opinion + 1).min(100);
                     self.relations[a][b].opinion = opinion;
                     self.relations[b][a].opinion = opinion;
@@ -1092,6 +1119,9 @@ impl GameState {
             army.owner >= self.factions.len() || self.world.get(army.position).is_none()
         }) {
             return Err("An army in the save file has an invalid owner or position.".to_owned());
+        }
+        if !self.market.is_valid() {
+            return Err("The saved global market contains an invalid commodity price.".to_owned());
         }
         Ok(())
     }

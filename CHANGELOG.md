@@ -18,6 +18,8 @@
 - Added war exhaustion pressure and expanded unit/building controls.
 - Added six government identities and six civic policies with economic and stability modifiers.
 - Added national policy reforms, legitimacy, unrest, and revolt-driven province loss.
+- Added global supply/demand commodity pricing for food, timber, stone and iron.
+- Linked international trade-agreement income to the global market index and displayed current prices in the Realm Council.
 - Added tests for the simulation domains, rival turns and campaign persistence.
 
 ## 0.1.0-dev — Initial playable prototype
