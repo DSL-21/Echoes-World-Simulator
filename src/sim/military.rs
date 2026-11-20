@@ -96,10 +96,28 @@ pub struct NavalFleet {
     pub position: Coord,
     pub capacity: usize,
     pub supply: f32,
+    #[serde(default = "default_fleet_strength")]
+    pub strength: f32,
+}
+
+fn default_fleet_strength() -> f32 {
+    100.0
 }
 
 impl NavalFleet {
     pub fn new(id: u64, owner: usize, position: Coord) -> Self {
-        Self { id, owner, name: format!("Transport Fleet {id}"), position, capacity: 2, supply: 100.0 }
+        Self {
+            id,
+            owner,
+            name: format!("Transport Fleet {id}"),
+            position,
+            capacity: 2,
+            supply: 100.0,
+            strength: 100.0,
+        }
+    }
+
+    pub fn combat_power(&self) -> f32 {
+        self.strength * (0.55 + self.supply / 220.0)
     }
 }
