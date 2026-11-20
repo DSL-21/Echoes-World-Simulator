@@ -1540,6 +1540,13 @@ fn handle_keyboard(
             game.add_log("Select a foreign province to negotiate peace.");
         }
     }
+    if input.just_pressed(KeyCode::KeyI) {
+        if let Some(target) = selected_foreign_owner(game) {
+            game.demand_tribute(target);
+        } else {
+            game.add_log("Select a foreign province to demand tribute from its realm.");
+        }
+    }
 }
 
 fn selected_foreign_owner(game: &GameState) -> Option<usize> {

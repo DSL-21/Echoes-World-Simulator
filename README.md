@@ -12,7 +12,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Economy with food, timber, stone, iron, gold, science and influence.
 - Ten province building types with terrain restrictions, construction costs and production effects; roads improve army supply and defence, while coastal city ports enable maritime trade.
 - City founding and population tracking.
-- Diplomacy with trade agreements, alliances, war declarations and truces.
+- Diplomacy with trade agreements, alliances, war declarations, truces and one-time tribute demands resolved by relations and military leverage.
 - Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
 - A global commodity market where food, timber, stone and iron prices react to world supply and demand, with live buy/sell orders in the Trade Desk.
 - International land and maritime trade routes that ship food, timber, stone or iron to treaty partners; sea routes require ports at both ends and gain additional cargo capacity.
@@ -63,7 +63,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | M | Order the nearest army one legal land step toward the selected province |
 | T | Propose a trade agreement with the selected realm |
 | X | Declare war on the selected realm |
-| P | Offer a truce to the selected realm |
+| P | Offer a truce to the selected realm |\n| I | Demand tribute from the selected foreign realm (accepted by friendly relations or clear military leverage) |
 | L | Enact the next national civic policy (costs gold and influence; six-year cooldown) |
 | [ / ] | Lower / raise the national tax rate by 2 percentage points |
 | F5 | Save campaign to echoes_save.json |

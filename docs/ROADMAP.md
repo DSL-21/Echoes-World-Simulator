@@ -47,7 +47,7 @@ The project is being built as a connected simulation rather than a collection of
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
 - [x] International overland trade routes
 - [x] Coastal ports and maritime trade routes with navigable-water pathfinding and save validation\n- [x] Naval transport fleets, embarkation, coastal landings, naval combat, fleet losses and AI amphibious invasions
-- [x] Personality-driven AI proposals for trade agreements, alliances and war declarations\n- [ ] Player-facing demands, guarantees and negotiated peace terms
+- [x] Personality-driven AI proposals for trade agreements, alliances and war declarations\n- [x] Player-facing tribute demands with deterministic acceptance, military leverage and treasury transfers\n- [ ] Guarantees and negotiated peace terms
 - [ ] War goals, peace terms, occupations and sieges
 - [ ] Unit recruitment by province, commanders and army composition
 - [ ] Province autonomy and governors (unrest/revolt foundations are implemented)

@@ -918,6 +918,57 @@ impl GameState {
         true
     }
 
+    /// Demands a one-time tribute from a foreign realm. Acceptance is deterministic:
+    /// friendly relations can secure a payment, while hostile realms only yield
+    /// when their war exhaustion is high and our fielded army is clearly stronger.
+    pub fn demand_tribute(&mut self, target: usize) -> bool {
+        if target >= self.factions.len() || target == PLAYER_ID {
+            return false;
+        }
+        if self.treaty_between(PLAYER_ID, target) == Treaty::War {
+            self.add_log("Tribute negotiations are unavailable during an active war; seek a peace settlement first.");
+            return false;
+        }
+
+        let treasury = self.factions[target].resources.gold;
+        let amount = (treasury * 0.08).min(40.0);
+        if amount < 5.0 {
+            self.add_log(format!("{} has too little gold to pay a meaningful tribute.", self.factions[target].name));
+            return false;
+        }
+
+        let our_power: f32 = self.armies.iter()
+            .filter(|army| army.owner == PLAYER_ID && army.embarked_in.is_none())
+            .map(|army| army.strength)
+            .sum();
+        let their_power: f32 = self.armies.iter()
+            .filter(|army| army.owner == target && army.embarked_in.is_none())
+            .map(|army| army.strength)
+            .sum();
+        let opinion = self.relations[PLAYER_ID][target].opinion;
+        let coercive_leverage = our_power > 0.0
+            && our_power >= their_power * 1.5
+            && self.factions[target].war_exhaustion >= 15.0;
+        let accepted = opinion >= 35 || coercive_leverage;
+        let name = self.factions[target].name.clone();
+
+        if !accepted {
+            let next_opinion = (opinion - 3).max(-100);
+            self.relations[PLAYER_ID][target].opinion = next_opinion;
+            self.relations[target][PLAYER_ID].opinion = next_opinion;
+            self.add_log(format!("TRIBUTE REJECTED — {name} refuses the demand. Relations deteriorate.") );
+            return false;
+        }
+
+        self.factions[target].resources.gold -= amount;
+        self.factions[PLAYER_ID].resources.gold += amount;
+        let next_opinion = (opinion - 6).max(-100);
+        self.relations[PLAYER_ID][target].opinion = next_opinion;
+        self.relations[target][PLAYER_ID].opinion = next_opinion;
+        self.add_log(format!("TRIBUTE PAID — {name} transfers {amount:.1} gold to the Aurelian League.") );
+        true
+    }
+
     pub fn buy_commodity(&mut self, commodity: Commodity, amount: f32) -> bool {
         if !amount.is_finite() || amount <= 0.0 || amount > 1000.0 {
             return false;
