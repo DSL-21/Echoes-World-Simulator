@@ -1547,6 +1547,20 @@ fn handle_keyboard(
             game.add_log("Select a foreign province to demand tribute from its realm.");
         }
     }
+    if input.just_pressed(KeyCode::KeyO) {
+        if let Some(target) = selected_foreign_owner(game) {
+            game.offer_peace_with_reparations(target);
+        } else {
+            game.add_log("Select an enemy province to negotiate peace with reparations.");
+        }
+    }
+    if input.just_pressed(KeyCode::KeyZ) {
+        if let Some(target) = selected_foreign_owner(game) {
+            game.demand_territory_in_peace(target, game.selected);
+        } else {
+            game.add_log("Select an enemy border province to demand as a peace concession.");
+        }
+    }
 }
 
 fn selected_foreign_owner(game: &GameState) -> Option<usize> {

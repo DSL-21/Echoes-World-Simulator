@@ -918,6 +918,90 @@ impl GameState {
         true
     }
 
+    /// Offers a negotiated end to a war in exchange for a one-time gold payment.
+    /// The defeated realm accepts only when war exhaustion or our military leverage
+    /// makes the demand credible.
+    pub fn offer_peace_with_reparations(&mut self, target: usize) -> bool {
+        if target >= self.factions.len() || target == PLAYER_ID
+            || self.treaty_between(PLAYER_ID, target) != Treaty::War
+        {
+            self.add_log("Reparations can only be negotiated with a realm currently at war with you.");
+            return false;
+        }
+        let treasury = self.factions[target].resources.gold;
+        let payment = (treasury * 0.15).min(60.0);
+        if payment < 8.0 {
+            self.add_log(format!("{} cannot afford meaningful war reparations; offer a white peace instead.", self.factions[target].name));
+            return false;
+        }
+        let our_power: f32 = self.armies.iter().filter(|army| army.owner == PLAYER_ID && army.embarked_in.is_none()).map(|army| army.strength).sum();
+        let their_power: f32 = self.armies.iter().filter(|army| army.owner == target && army.embarked_in.is_none()).map(|army| army.strength).sum();
+        let accepted = self.factions[target].war_exhaustion >= 25.0
+            || (our_power > 0.0 && our_power >= their_power * 1.2);
+        let name = self.factions[target].name.clone();
+        if !accepted {
+            self.add_log(format!("PEACE REJECTED — {name} refuses to pay reparations. The war continues."));
+            return false;
+        }
+        self.factions[target].resources.gold -= payment;
+        self.factions[PLAYER_ID].resources.gold += payment;
+        set_symmetric(&mut self.relations, PLAYER_ID, target, Treaty::Truce, self.turn);
+        self.relations[PLAYER_ID][target].opinion = -10;
+        self.relations[target][PLAYER_ID].opinion = -10;
+        self.factions[PLAYER_ID].war_exhaustion = (self.factions[PLAYER_ID].war_exhaustion - 20.0).max(0.0);
+        self.factions[target].war_exhaustion = (self.factions[target].war_exhaustion - 15.0).max(0.0);
+        self.add_log(format!("PEACE WITH REPARATIONS — {name} pays {payment:.1} gold and signs a truce with the Aurelian League."));
+        true
+    }
+
+    /// Demands the selected enemy border province as part of a peace settlement.
+    /// Capitals are protected; the AI yields only under severe exhaustion and a
+    /// clear military disadvantage. Population and route ownership are reconciled.
+    pub fn demand_territory_in_peace(&mut self, target: usize, province: Coord) -> bool {
+        if target >= self.factions.len() || target == PLAYER_ID
+            || self.treaty_between(PLAYER_ID, target) != Treaty::War
+        {
+            self.add_log("Territorial concessions can only be demanded from a realm currently at war with you.");
+            return false;
+        }
+        let Some(tile) = self.world.get(province) else { return false; };
+        if tile.owner != Some(target) || !tile.terrain.is_land()
+            || province == self.factions[target].capital
+            || !self.adjacent_to_faction(province, PLAYER_ID)
+        {
+            self.add_log("A peace concession must be an enemy-held land province on your border; enemy capitals cannot be ceded.");
+            return false;
+        }
+        let our_power: f32 = self.armies.iter().filter(|army| army.owner == PLAYER_ID && army.embarked_in.is_none()).map(|army| army.strength).sum();
+        let their_power: f32 = self.armies.iter().filter(|army| army.owner == target && army.embarked_in.is_none()).map(|army| army.strength).sum();
+        let accepted = self.factions[target].war_exhaustion >= 45.0
+            && our_power > 0.0 && our_power >= their_power * 1.25;
+        let name = self.factions[target].name.clone();
+        let province_name = tile.city.clone().unwrap_or_else(|| tile.terrain.name().to_owned());
+        if !accepted {
+            self.add_log(format!("TERRITORIAL DEMAND REJECTED — {name} refuses to surrender {province_name}. The war continues."));
+            return false;
+        }
+
+        let population = self.world.get(province).map_or(0, |tile| tile.population);
+        self.factions[target].population = self.factions[target].population.saturating_sub(population);
+        self.factions[PLAYER_ID].population = self.factions[PLAYER_ID].population.saturating_add(population);
+        if let Some(tile) = self.world.get_mut(province) {
+            tile.owner = Some(PLAYER_ID);
+            tile.discovered = true;
+        }
+        self.trade_routes.retain(|route| {
+            route.origin != province && route.destination != province && !route.path.contains(&province)
+        });
+        set_symmetric(&mut self.relations, PLAYER_ID, target, Treaty::Truce, self.turn);
+        self.relations[PLAYER_ID][target].opinion = -25;
+        self.relations[target][PLAYER_ID].opinion = -25;
+        self.factions[PLAYER_ID].war_exhaustion = (self.factions[PLAYER_ID].war_exhaustion - 20.0).max(0.0);
+        self.factions[target].war_exhaustion = (self.factions[target].war_exhaustion - 15.0).max(0.0);
+        self.add_log(format!("PEACE TREATY — {name} cedes {province_name} to the Aurelian League. The war is over."));
+        true
+    }
+
     /// Demands a one-time tribute from a foreign realm. Acceptance is deterministic:
     /// friendly relations can secure a payment, while hostile realms only yield
     /// when their war exhaustion is high and our fielded army is clearly stronger.

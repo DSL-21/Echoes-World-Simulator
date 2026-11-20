@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-dev — Simulation foundation\n\n- Added player tribute demands with deterministic diplomatic acceptance, military leverage, treasury transfers and relationship consequences.
+## 0.2.0-dev — Simulation foundation\n\n- Added negotiated peace settlements: war reparations transfer gold, while territorial concessions transfer enemy border provinces and population; enemy capitals are protected and trade routes affected by a cession are removed.\n\n- Added player tribute demands with deterministic diplomatic acceptance, military leverage, treasury transfers and relationship consequences.
 
 - Added naval transport fleets commissioned at owned coastal ports, two-unit troop capacity, embarkation, sea movement, coastal disembarkation, save validation and dedicated UI controls.
 - Added naval hull strength, hostile fleet engagements, sinking and cargo losses; AI weighs enemy fleet strength before committing to amphibious landings.
