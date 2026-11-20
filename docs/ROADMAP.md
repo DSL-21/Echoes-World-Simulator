@@ -40,14 +40,14 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Global commodity market with supply/demand price movement and trade-income effects
 - [x] International land and maritime trade routes with treaty access, cargo exports, partner payment and infrastructure-based capacity
 - [x] Player buy/sell orders for food, timber, stone and iron
-- [ ] Verify visual playability on a Windows desktop
+- [ ] Verify visual playability on a Windows desktop (requires hands-on runtime check)
 - [x] Add automated multi-year balance and AI simulation tests
 
 ## 0.3 — Grand strategy systems
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
 - [x] International overland trade routes
-- [x] Coastal ports and maritime trade routes with navigable-water pathfinding and save validation\n- [ ] Naval transport and military fleets
-- [ ] Diplomacy AI: guarantees, demands and player-facing negotiation (personality-driven trade, alliance and war proposals implemented)
+- [x] Coastal ports and maritime trade routes with navigable-water pathfinding and save validation\n- [x] Naval transport fleets, embarkation, coastal landings, naval combat, fleet losses and AI amphibious invasions
+- [x] Personality-driven AI proposals for trade agreements, alliances and war declarations\n- [ ] Player-facing demands, guarantees and negotiated peace terms
 - [ ] War goals, peace terms, occupations and sieges
 - [ ] Unit recruitment by province, commanders and army composition
 - [ ] Province autonomy and governors (unrest/revolt foundations are implemented)

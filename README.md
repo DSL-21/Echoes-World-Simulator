@@ -51,7 +51,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | 6 | Build a library |
 | 7 | Build barracks |
 | 8 | Build an aqueduct |
-| 9 | Build a road (also permitted in city provinces) |\n| 0 | Build a port in a coastal city |
+| 0 | Build a port in a coastal city |
 | Q | Commission a transport fleet in the selected port |
 | E | Embark an army at the selected fleet |
 | D | Disembark troops at a friendly or neutral coast |
@@ -71,7 +71,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | Escape | Open or close the campaign menu / pause overlay |
 | Escape | Open or close the campaign menu / pause overlay |
 
-The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. Sign a trade agreement with a realm using T, select one of its cities, then use Y, H, N or U to charter a convoy for food, timber, stone or iron. A route costs 24 gold, 10 timber and 5 stone; shipments preserve domestic reserve stock, transfer goods to the partner and pay the exporter at the dynamic market price. Roads increase land-route capacity; ports increase maritime capacity. If no safe land corridor exists, a maritime route can be chartered between coastal cities with ports. Routes are suspended while the treaty is broken or the route becomes impassable. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province per order. Select a distant destination and use M repeatedly; the nearest reachable army follows a legal land route, cannot cross open ocean, and needs a war declaration to enter hostile territory.
+The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. Sign a trade agreement with a realm using T, select one of its cities, then use Y, H, N or U to charter a convoy for food, timber, stone or iron. A route costs 24 gold, 10 timber and 5 stone; shipments preserve domestic reserve stock, transfer goods to the partner and pay the exporter at the dynamic market price. Roads increase land-route capacity; ports increase maritime capacity. If no safe land corridor exists, a maritime route can be chartered between coastal cities with ports. Routes are suspended while the treaty is broken or the route becomes impassable. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province per order. Select a distant destination and use M repeatedly; the nearest reachable army follows a legal land route, cannot cross open ocean, and needs a war declaration to enter hostile territory.
 
 ## Campaign goals
 
@@ -111,7 +111,7 @@ Run all tests with cargo test.
 
 ## Development direction
 
-The next layers are deeper economic chains, diplomacy and AI negotiation, province governors, more detailed warfare, maritime systems, culture and institutions, scenario setup, campaign settings, improved art/audio and release packaging. Each system is intended to remain testable independently of the renderer.
+The next layers are deeper economic chains, war goals and peace terms, province governors, commanders and army composition, culture and institutions, scenario setup, campaign settings, improved art/audio and release packaging. Naval transport, fleet combat and AI amphibious invasions are implemented; desktop visual playability still needs hands-on verification. Each system is intended to remain testable independently of the renderer.
 
 See docs/ROADMAP.md for the current plan and CHANGELOG.md for implementation history.
 
