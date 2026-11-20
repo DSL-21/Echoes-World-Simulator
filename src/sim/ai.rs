@@ -720,7 +720,8 @@ mod tests {
         game.armies.push(Army::new(1, 1, port, UnitClass::Infantry));
         game.next_army_id = 2;
         let mut transport = NavalFleet::new(1, 1, port);
-        game.naval_fleets.push(transport.clone());
+        transport.strength = 40.0;
+        game.naval_fleets.push(transport);
         let mut hostile = NavalFleet::new(2, PLAYER_ID, sea);
         hostile.strength = 100.0;
         game.naval_fleets.push(hostile);
@@ -731,8 +732,9 @@ mod tests {
         process_naval_warfare(&mut game);
         process_naval_warfare(&mut game);
 
-        transport = game.naval_fleets.iter().find(|fleet| fleet.id == 1).unwrap().clone();
+        let transport = game.naval_fleets.iter().find(|fleet| fleet.id == 1).unwrap();
         assert_eq!(transport.position, port);
+        assert_eq!(transport.strength, 40.0);
         assert!(game.armies.iter().any(|army| army.embarked_in == Some(1)));
         assert!(game.validate().is_ok());
     }
