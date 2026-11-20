@@ -800,6 +800,10 @@ impl GameState {
         let coord = self.selected;
         let Some(tile) = self.world.get(coord) else { return false; };
         if tile.terrain != Terrain::Coast { self.add_log("Troops can only disembark onto a coastal province."); return false; }
+        if tile.owner.is_some_and(|owner| owner != PLAYER_ID) {
+            self.add_log("A transport cannot unload troops directly into a hostile province; land on a friendly or neutral coast first.");
+            return false;
+        }
         let Some(fleet) = self.naval_fleets.iter().find(|fleet| fleet.owner == PLAYER_ID && fleet.position == coord) else {
             self.add_log("No friendly transport fleet is stationed at the selected coast."); return false;
         };
