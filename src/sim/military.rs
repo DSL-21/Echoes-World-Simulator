@@ -29,6 +29,8 @@ pub struct Army {
     pub supply: f32,
     pub class: UnitClass,
     pub experience: f32,
+    #[serde(default)]
+    pub embarked_in: Option<u64>,
 }
 
 impl Army {
@@ -47,6 +49,7 @@ impl Army {
             supply: 100.0,
             class,
             experience: 0.0,
+            embarked_in: None,
         }
     }
 
@@ -81,5 +84,22 @@ mod tests {
         army.supply = 100.0;
         army.experience = 50.0;
         assert!(army.combat_power() > supplied);
+    }
+}
+
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NavalFleet {
+    pub id: u64,
+    pub owner: usize,
+    pub name: String,
+    pub position: Coord,
+    pub capacity: usize,
+    pub supply: f32,
+}
+
+impl NavalFleet {
+    pub fn new(id: u64, owner: usize, position: Coord) -> Self {
+        Self { id, owner, name: format!("Transport Fleet {id}"), position, capacity: 2, supply: 100.0 }
     }
 }

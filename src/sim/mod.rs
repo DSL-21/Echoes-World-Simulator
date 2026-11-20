@@ -22,7 +22,7 @@ use self::{
     economy::{Building, Resources, terrain_yield},
     events::WorldEvent,
     market::{Commodity, MarketState},
-    military::{Army, UnitClass, recruitment_cost},
+    military::{Army, NavalFleet, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
     trade_routes::{find_land_route, find_maritime_route, reserve_stock, route_capacity, route_is_open, TradeRoute, TradeRouteType},
@@ -126,6 +126,10 @@ pub struct GameState {
     pub relations: Vec<Vec<Relation>>,
     pub armies: Vec<Army>,
     #[serde(default)]
+    pub naval_fleets: Vec<NavalFleet>,
+    #[serde(default = "default_next_naval_fleet_id")]
+    pub next_naval_fleet_id: u64,
+    #[serde(default)]
     pub market: MarketState,
     pub selected: Coord,
     pub turn: u32,
@@ -141,6 +145,10 @@ pub struct GameState {
     pub trade_routes: Vec<TradeRoute>,
     #[serde(default = "default_next_trade_route_id")]
     pub next_trade_route_id: u64,
+}
+
+fn default_next_naval_fleet_id() -> u64 {
+    1
 }
 
 fn default_next_trade_route_id() -> u64 {
@@ -207,6 +215,8 @@ impl GameState {
             factions,
             relations: new_matrix(definitions.len()),
             armies: Vec::new(),
+            naval_fleets: Vec::new(),
+            next_naval_fleet_id: 1,
             market: MarketState::default(),
             selected: capitals[PLAYER_ID],
             turn: 1,
@@ -636,6 +646,109 @@ impl GameState {
         true
     }
 
+    pub fn build_naval_fleet(&mut self) -> bool {
+        let coord = self.selected;
+        let Some(tile) = self.world.get(coord) else { return false; };
+        if tile.owner != Some(PLAYER_ID) || tile.city.is_none() || tile.terrain != Terrain::Coast || !tile.buildings.contains(&Building::Port) {
+            self.add_log("A transport fleet can only be commissioned in your own coastal city with a Port.");
+            return false;
+        }
+        if self.naval_fleets.iter().any(|fleet| fleet.owner == PLAYER_ID && fleet.position == coord) {
+            self.add_log("A transport fleet is already stationed in this port."); return false;
+        }
+        let cost = Resources { gold: 45.0, timber: 30.0, iron: 8.0, ..Default::default() };
+        if !self.factions[PLAYER_ID].resources.pay(&cost) {
+            self.add_log("A transport fleet requires 45 gold, 30 timber and 8 iron."); return false;
+        }
+        let id = self.next_naval_fleet_id;
+        self.next_naval_fleet_id += 1;
+        self.naval_fleets.push(NavalFleet::new(id, PLAYER_ID, coord));
+        self.add_log(format!("NAVAL FLEET COMMISSIONED — Transport Fleet {id} is ready at the port."));
+        true
+    }
+
+    pub fn embark_nearest_army(&mut self) -> bool {
+        let coord = self.selected;
+        let Some(fleet_index) = self.naval_fleets.iter().position(|fleet| fleet.owner == PLAYER_ID && fleet.position == coord) else {
+            self.add_log("Select a tile where one of your transport fleets is stationed."); return false;
+        };
+        let fleet_id = self.naval_fleets[fleet_index].id;
+        let aboard = self.armies.iter().filter(|army| army.embarked_in == Some(fleet_id)).count();
+        if aboard >= self.naval_fleets[fleet_index].capacity {
+            self.add_log("This transport fleet has reached its troop capacity."); return false;
+        }
+        let Some(army_index) = self.armies.iter().position(|army| army.owner == PLAYER_ID && army.position == coord && army.embarked_in.is_none()) else {
+            self.add_log("No friendly land army is present at this port to embark."); return false;
+        };
+        self.armies[army_index].embarked_in = Some(fleet_id);
+        let name = self.armies[army_index].name.clone();
+        self.add_log(format!("{name} embarks aboard Transport Fleet {fleet_id}."));
+        true
+    }
+
+    pub fn move_nearest_fleet_to_selected(&mut self) -> bool {
+        let destination = self.selected;
+        let candidates: Vec<(u64, Coord)> = self.naval_fleets.iter()
+            .filter(|fleet| fleet.owner == PLAYER_ID && fleet.position != destination)
+            .map(|fleet| (fleet.id, fleet.position)).collect();
+        let mut best: Option<(u64, Coord, usize)> = None;
+        for (id, origin) in candidates {
+            let mut queue = VecDeque::from([(origin, None::<Coord>)]);
+            let mut visited = HashSet::from([origin]);
+            let mut first_step = None;
+            while let Some((current, first)) = queue.pop_front() {
+                if current == destination { first_step = first; break; }
+                for next in self.world.neighbors(current) {
+                    if visited.contains(&next) || !self.world.get(next).is_some_and(|tile| matches!(tile.terrain, Terrain::Ocean | Terrain::Coast)) { continue; }
+                    visited.insert(next);
+                    queue.push_back((next, first.or(Some(next))));
+                }
+            }
+            if let Some(step) = first_step {
+                let distance = origin.manhattan(destination) as usize;
+                if best.is_none_or(|(_, _, old)| distance < old) { best = Some((id, step, distance)); }
+            }
+        }
+        let Some((id, step, _)) = best else {
+            self.add_log("No transport fleet has a navigable sea lane to the selected province."); return false;
+        };
+        self.move_naval_fleet(id, step)
+    }
+
+    pub fn move_naval_fleet(&mut self, fleet_id: u64, destination: Coord) -> bool {
+        let Some(index) = self.naval_fleets.iter().position(|fleet| fleet.id == fleet_id) else { return false; };
+        if self.naval_fleets[index].owner != PLAYER_ID {
+            self.add_log("You cannot command another realm's transport fleet."); return false;
+        }
+        let origin = self.naval_fleets[index].position;
+        if origin.manhattan(destination) != 1 || !self.world.get(destination).is_some_and(|tile| matches!(tile.terrain, Terrain::Ocean | Terrain::Coast)) {
+            self.add_log("A transport fleet can sail one adjacent ocean or coastal tile per turn."); return false;
+        }
+        self.naval_fleets[index].position = destination;
+        self.naval_fleets[index].supply = (self.naval_fleets[index].supply - 1.5).max(0.0);
+        for army in &mut self.armies { if army.embarked_in == Some(fleet_id) { army.position = destination; } }
+        let name = self.naval_fleets[index].name.clone();
+        self.add_log(format!("{name} sails to {}, {} with its embarked troops.", destination.x + 1, destination.y + 1));
+        true
+    }
+
+    pub fn disembark_armies(&mut self) -> bool {
+        let coord = self.selected;
+        let Some(tile) = self.world.get(coord) else { return false; };
+        if tile.terrain != Terrain::Coast { self.add_log("Troops can only disembark onto a coastal province."); return false; }
+        let Some(fleet) = self.naval_fleets.iter().find(|fleet| fleet.owner == PLAYER_ID && fleet.position == coord) else {
+            self.add_log("No friendly transport fleet is stationed at the selected coast."); return false;
+        };
+        let fleet_id = fleet.id;
+        let mut count = 0;
+        for army in &mut self.armies {
+            if army.embarked_in == Some(fleet_id) { army.embarked_in = None; army.position = coord; count += 1; }
+        }
+        if count == 0 { self.add_log("There are no embarked troops aboard this fleet."); return false; }
+        self.add_log(format!("{count} army unit(s) disembark at {}, {}.", coord.x + 1, coord.y + 1));
+        true
+    }
+
     pub fn offer_trade_agreement(&mut self, target: usize) -> bool {
         if target >= self.factions.len() || target == PLAYER_ID {
             return false;
@@ -873,6 +986,7 @@ impl GameState {
         };
         let origin = self.armies[index].position;
         let owner = self.armies[index].owner;
+        if self.armies[index].embarked_in.is_some() { self.add_log("An embarked army must disembark before it can march independently."); return false; }
         if origin.manhattan(destination) != 1 {
             Self::push_chronicle(
                 &mut self.chronicle,
@@ -906,7 +1020,7 @@ impl GameState {
             let defending_armies: f32 = self
                 .armies
                 .iter()
-                .filter(|a| a.owner == defender && a.position == destination)
+                .filter(|a| a.owner == defender && a.position == destination && a.embarked_in.is_none())
                 .map(Army::combat_power)
                 .sum();
             let garrison = self
@@ -1463,6 +1577,24 @@ impl GameState {
                 return Err("An army in the save file has invalid identity, owner, position or statistics.".to_owned());
             }
         }
+        let mut fleet_ids = HashSet::new();
+        for fleet in &self.naval_fleets {
+            if fleet.owner >= self.factions.len() || self.world.get(fleet.position).is_none_or(|tile| !matches!(tile.terrain, Terrain::Ocean | Terrain::Coast))
+                || !fleet_ids.insert(fleet.id) || fleet.capacity == 0 || !fleet.supply.is_finite() || !(0.0..=100.0).contains(&fleet.supply) {
+                return Err("A naval fleet in the save file has invalid identity, position, capacity or supply.".to_owned());
+            }
+            let cargo: Vec<&Army> = self.armies.iter().filter(|army| army.embarked_in == Some(fleet.id)).collect();
+            if cargo.len() > fleet.capacity || cargo.iter().any(|army| army.owner != fleet.owner || army.position != fleet.position) {
+                return Err("A transport fleet has invalid or over-capacity embarked troops.".to_owned());
+            }
+        }
+        if self.armies.iter().any(|army| army.embarked_in.is_some_and(|id| !self.naval_fleets.iter().any(|fleet| fleet.id == id))) {
+            return Err("An army references a transport fleet that does not exist.".to_owned());
+        }
+        if self.next_naval_fleet_id <= self.naval_fleets.iter().map(|fleet| fleet.id).max().unwrap_or(0) {
+            return Err("The next naval-fleet identifier would collide with an existing fleet.".to_owned());
+        }
+
         if self.next_army_id <= self.armies.iter().map(|army| army.id).max().unwrap_or(0) {
             return Err("The next army identifier would collide with an existing army.".to_owned());
         }
@@ -1523,6 +1655,32 @@ impl GameState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transport_fleet_embarks_sails_and_disembarks_an_army() {
+        let mut game = GameState::new(2041);
+        let port = game.factions[PLAYER_ID].capital;
+        let sea = game.world.neighbors(port)[0];
+        game.world.get_mut(port).unwrap().terrain = Terrain::Coast;
+        game.world.get_mut(port).unwrap().buildings.push(Building::Port);
+        game.world.get_mut(sea).unwrap().terrain = Terrain::Ocean;
+        game.selected = port;
+        assert!(game.recruit_army(UnitClass::Infantry));
+        assert!(game.build_naval_fleet());
+        assert!(game.embark_nearest_army());
+        let army_id = game.armies[0].id;
+        assert!(game.armies[0].embarked_in.is_some());
+        let fleet_id = game.naval_fleets[0].id;
+        assert!(game.move_naval_fleet(fleet_id, sea));
+        assert_eq!(game.armies[0].position, sea);
+        assert!(!game.move_army(army_id, port));
+        game.world.get_mut(sea).unwrap().terrain = Terrain::Coast;
+        game.selected = sea;
+        assert!(game.disembark_armies());
+        assert_eq!(game.armies[0].position, sea);
+        assert_eq!(game.armies[0].embarked_in, None);
+        assert!(game.validate().is_ok());
+    }
 
     #[test]
     fn international_trade_route_moves_cargo_and_pays_the_exporter() {
