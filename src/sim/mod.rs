@@ -505,6 +505,13 @@ impl GameState {
             );
             return false;
         }
+        if building == Building::Port && tile.city.is_none() {
+            Self::push_chronicle(
+                &mut self.chronicle,
+                "A port must serve an established coastal city.",
+            );
+            return false;
+        }
         if tile.buildings.contains(&building) {
             Self::push_chronicle(
                 &mut self.chronicle,
