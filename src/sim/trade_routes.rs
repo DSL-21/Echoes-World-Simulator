@@ -231,6 +231,67 @@ mod tests {
     }
 
     #[test]
+    fn maritime_routes_require_ports_and_follow_navigable_water() {
+        use super::super::economy::Building;
+        use super::super::world::Terrain;
+
+        let mut game = GameState::new(2033);
+        let origin = Coord::new(2, 2);
+        let destination = Coord::new(5, 2);
+        for coord in [origin, Coord::new(3, 2), Coord::new(4, 2), destination] {
+            let tile = game.world.get_mut(coord).unwrap();
+            tile.terrain = if coord == origin || coord == destination {
+                Terrain::Coast
+            } else {
+                Terrain::Ocean
+            };
+            tile.owner = None;
+            tile.city = None;
+            tile.buildings.clear();
+        }
+        {
+            let tile = game.world.get_mut(origin).unwrap();
+            tile.owner = Some(PLAYER_ID);
+            tile.city = Some("Harbour City".to_owned());
+            tile.buildings.push(Building::Port);
+        }
+        {
+            let tile = game.world.get_mut(destination).unwrap();
+            tile.owner = Some(1);
+            tile.city = Some("Farhaven".to_owned());
+            tile.buildings.push(Building::Port);
+        }
+        set_symmetric(
+            &mut game.relations,
+            PLAYER_ID,
+            1,
+            Treaty::TradeAgreement,
+            game.turn,
+        );
+
+        let path = find_maritime_route(&game, PLAYER_ID, 1, origin, destination).unwrap();
+        assert_eq!(path, vec![origin, Coord::new(3, 2), Coord::new(4, 2), destination]);
+        let route = TradeRoute {
+            id: 1,
+            owner: PLAYER_ID,
+            partner: 1,
+            origin,
+            destination,
+            commodity: Commodity::Food,
+            route_type: TradeRouteType::Maritime,
+            path,
+            capacity: 4.0,
+            active: true,
+            last_trade_turn: 0,
+        };
+        assert!(route_is_open(&game, &route));
+
+        game.world.get_mut(destination).unwrap().buildings.clear();
+        assert!(find_maritime_route(&game, PLAYER_ID, 1, origin, destination).is_none());
+        assert!(!route_is_open(&game, &route));
+    }
+
+    #[test]
     fn road_infrastructure_increases_route_capacity() {
         let mut game = GameState::new(2032);
         let origin = game.factions[PLAYER_ID].capital;
