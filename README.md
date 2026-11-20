@@ -6,11 +6,11 @@ The goal is a systemic world in which independent realms expand, develop economi
 
 ## Current build — 0.2.0-dev
 
-- Deterministic procedural world generation with eight terrain types and coastal transitions.
+- Deterministic procedural world generation with eight terrain types, coastal transitions and winding rivers from highlands to the sea.
 - Five rival realms with capitals, starting provinces, populations, economies and AI personalities.
 - Province ownership, connected expansion and terrain-dependent construction.
 - Economy with food, timber, stone, iron, gold, science and influence.
-- Eight province building types with costs and production effects.
+- Nine province building types with costs and production effects, including roads that improve army supply and defensive positions.
 - City founding and population tracking.
 - Diplomacy with trade agreements, alliances, war declarations and truces.
 - Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
@@ -21,7 +21,8 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
 - Research tree with prerequisites and technology effects.
 - Periodic world events and a persistent chronicle.
-- Camera panning and zoom, province selection and contextual realm information.
+- Camera panning and zoom, province selection, contextual realm information and five strategic map layers.
+- Main menu with new campaign, resume, load and Escape-to-pause flow.
 - JSON campaign save/load using F5 and F9.
 - Automated tests plus Windows x64 build and downloadable preview artifact.
 
@@ -47,6 +48,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | 6 | Build a library |
 | 7 | Build barracks |
 | 8 | Build an aqueduct |
+| 9 | Build a road (also permitted in city provinces) |
 | B | Found a city in the selected province |
 | G / V / J | Recruit infantry / cavalry / siege armies |
 | R | Start the next available technology |
@@ -58,8 +60,9 @@ The goal is a systemic world in which independent realms expand, develop economi
 | [ / ] | Lower / raise the national tax rate by 2 percentage points |
 | F5 | Save campaign to echoes_save.json |
 | F9 | Load campaign from echoes_save.json |
+| Escape | Open or close the campaign menu / pause overlay |
 
-The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
 ## Campaign goals
 
@@ -84,7 +87,7 @@ Run all tests with cargo test.
 
 ## Architecture
 
-- src/sim/world.rs — coordinates, terrain, provinces and deterministic map generation.
+- src/sim/world.rs — coordinates, terrain, provinces, deterministic map generation and river paths.
 - src/sim/economy.rs — resource stockpiles, building costs and production.
 - src/sim/market.rs — dynamic global commodity prices from supply and demand.
 - src/sim/ai.rs — rival development, diplomacy and army pathfinding.

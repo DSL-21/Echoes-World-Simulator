@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet, VecDeque};
+
 use serde::{Deserialize, Serialize};
 
 use super::economy::Building;
@@ -82,6 +84,8 @@ pub struct Tile {
     pub population: u32,
     pub buildings: Vec<Building>,
     pub discovered: bool,
+    #[serde(default)]
+    pub river: bool,
 }
 
 impl Tile {
@@ -93,6 +97,7 @@ impl Tile {
             population: 0,
             buildings: Vec::new(),
             discovered: false,
+            river: false,
         }
     }
 }
@@ -162,7 +167,117 @@ impl WorldMap {
                 tile.terrain = Terrain::Coast;
             }
         }
+        map.generate_rivers();
         map
+    }
+
+    fn generate_rivers(&mut self) {
+        let mut sources: Vec<Coord> = self
+            .coords()
+            .into_iter()
+            .filter(|coord| {
+                self.get(*coord)
+                    .is_some_and(|tile| tile.terrain == Terrain::Mountain)
+            })
+            .collect();
+        sources.sort_by_key(|coord| {
+            (coord.x as u64).wrapping_mul(0x9E37_79B1)
+                ^ (coord.y as u64).wrapping_mul(0x85EB_CA77)
+                ^ self.seed
+        });
+
+        let mut selected_sources: Vec<Coord> = Vec::new();
+        let mut river_count = 0;
+        for source in sources {
+            if river_count >= 4 {
+                break;
+            }
+            if selected_sources
+                .iter()
+                .any(|other| source.manhattan(*other) < 7)
+            {
+                continue;
+            }
+            let path = self.find_river_path(source);
+            if path.len() < 5 {
+                continue;
+            }
+            if path
+                .iter()
+                .any(|coord| self.get(*coord).is_some_and(|tile| tile.river))
+            {
+                continue;
+            }
+            for coord in &path {
+                if let Some(tile) = self.get_mut(*coord) {
+                    tile.river = true;
+                }
+            }
+            selected_sources.push(source);
+            river_count += 1;
+        }
+    }
+
+    fn find_river_path(&self, start: Coord) -> Vec<Coord> {
+        if !self
+            .get(start)
+            .is_some_and(|tile| tile.terrain == Terrain::Mountain)
+        {
+            return Vec::new();
+        }
+
+        let mut queue = VecDeque::from([start]);
+        let mut parents: HashMap<Coord, Option<Coord>> = HashMap::new();
+        let mut visited = HashSet::from([start]);
+        parents.insert(start, None);
+        let mut destination = None;
+
+        while let Some(current) = queue.pop_front() {
+            if self
+                .get(current)
+                .is_some_and(|tile| tile.terrain == Terrain::Coast)
+            {
+                destination = Some(current);
+                break;
+            }
+
+            let mut neighbors = self.neighbors(current);
+            neighbors.sort_by_key(|coord| {
+                let terrain_rank = match self.get(*coord).map(|tile| tile.terrain) {
+                    Some(Terrain::Coast) => 0,
+                    Some(Terrain::Grassland | Terrain::Plains) => 1,
+                    Some(Terrain::Forest | Terrain::Tundra | Terrain::Desert) => 2,
+                    Some(Terrain::Mountain) => 3,
+                    _ => 4,
+                };
+                (terrain_rank, coord.y, coord.x)
+            });
+
+            for next in neighbors {
+                if !visited.insert(next) {
+                    continue;
+                }
+                let Some(tile) = self.get(next) else {
+                    continue;
+                };
+                if !tile.terrain.is_land() {
+                    continue;
+                }
+                parents.insert(next, Some(current));
+                queue.push_back(next);
+            }
+        }
+
+        let Some(mut current) = destination else {
+            return Vec::new();
+        };
+        let mut path = vec![current];
+        while let Some(Some(parent)) = parents.get(&current) {
+            current = *parent;
+            path.push(current);
+        }
+        path.reverse();
+        path
     }
 
     pub fn index(&self, coord: Coord) -> Option<usize> {
@@ -274,12 +389,35 @@ mod tests {
     }
 
     #[test]
+    fn generated_rivers_reach_the_coast_and_follow_land() {
+        let map = WorldMap::generate(44, 28, 2026);
+        let river_tiles: Vec<_> = map
+            .coords()
+            .into_iter()
+            .filter(|coord| map.get(*coord).is_some_and(|tile| tile.river))
+            .collect();
+
+        assert!(!river_tiles.is_empty());
+        assert!(river_tiles
+            .iter()
+            .all(|coord| map.get(*coord).is_some_and(|tile| tile.terrain.is_land())));
+        assert!(river_tiles.iter().any(|coord| {
+            map.get(*coord)
+                .is_some_and(|tile| tile.terrain == Terrain::Coast)
+        }));
+    }
+
+    #[test]
     fn map_generation_is_deterministic() {
         let a = WorldMap::generate(30, 20, 123);
         let b = WorldMap::generate(30, 20, 123);
         assert_eq!(
             a.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>(),
             b.tiles.iter().map(|t| t.terrain).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            a.tiles.iter().map(|t| t.river).collect::<Vec<_>>(),
+            b.tiles.iter().map(|t| t.river).collect::<Vec<_>>()
         );
     }
 

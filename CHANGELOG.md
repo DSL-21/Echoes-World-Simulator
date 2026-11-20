@@ -3,6 +3,9 @@
 ## 0.2.0-dev — Simulation foundation
 
 - Added five strategic map layers: terrain, political ownership, population, resource potential and infrastructure.
+- Added procedural rivers that wind from mountain regions to the coast.
+- Added buildable roads, with reduced army supply loss and stronger defensive positions.
+- Added a main campaign menu with new campaign, resume, load and Escape pause/resume.
 - Added keyboard layer switching and a live map-mode label.
 
 - Replaced the single-file prototype model with separate simulation modules.

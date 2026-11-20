@@ -408,10 +408,10 @@ impl GameState {
             );
             return false;
         }
-        if tile.city.is_some() {
+        if tile.city.is_some() && building != Building::Road {
             Self::push_chronicle(
                 &mut self.chronicle,
-                "Urban administration occupies this province. Choose another province for rural development.",
+                "Urban administration occupies this province. Only roads can be built in a city.",
             );
             return false;
         }
@@ -809,7 +809,11 @@ impl GameState {
             let garrison = self
                 .world
                 .get(destination)
-                .map(|t| t.population as f32 * 0.7 + if t.city.is_some() { 25.0 } else { 0.0 })
+                .map(|t| {
+                    t.population as f32 * 0.7
+                        + if t.city.is_some() { 25.0 } else { 0.0 }
+                        + if t.buildings.contains(&Building::Road) { 8.0 } else { 0.0 }
+                })
                 .unwrap_or(0.0);
             let defense = 45.0 + defending_armies + garrison;
             let enemy_name = self.factions[defender].name.clone();
@@ -846,7 +850,10 @@ impl GameState {
             return true;
         }
         self.armies[index].position = destination;
-        self.armies[index].supply = (self.armies[index].supply - 4.0).max(0.0);
+        let uses_road = self.world.get(origin).is_some_and(|province| province.buildings.contains(&Building::Road))
+            || self.world.get(destination).is_some_and(|province| province.buildings.contains(&Building::Road));
+        let supply_cost = if uses_road { 2.0 } else { 4.0 };
+        self.armies[index].supply = (self.armies[index].supply - supply_cost).max(0.0);
         let name = self.armies[index].name.clone();
         Self::push_chronicle(
             &mut self.chronicle,
@@ -1336,6 +1343,26 @@ mod tests {
         }
         assert!(game.recruit_army(UnitClass::Infantry));
         assert_eq!(game.army_count(PLAYER_ID), 1);
+    }
+
+    #[test]
+    fn roads_can_be_built_in_cities_and_reduce_army_supply_cost() {
+        let mut game = GameState::new(2040);
+        let capital = game.factions[PLAYER_ID].capital;
+        game.select(capital);
+        assert!(game.build_selected(Building::Road));
+        assert!(game.world.get(capital).unwrap().buildings.contains(&Building::Road));
+
+        let destination = game.world.neighbors(capital).into_iter().find(|coord| {
+            game.world.get(*coord).is_some_and(|tile| {
+                tile.owner == Some(PLAYER_ID) && tile.terrain.is_land()
+            })
+        }).expect("capital should have an adjacent friendly land province");
+        assert!(game.recruit_army(UnitClass::Infantry));
+        let army_id = game.armies[0].id;
+        let starting_supply = game.armies[0].supply;
+        assert!(game.move_army(army_id, destination));
+        assert!((game.armies[0].supply - (starting_supply - 2.0)).abs() < 0.001);
     }
 
     #[test]

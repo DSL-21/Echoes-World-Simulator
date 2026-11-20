@@ -81,6 +81,7 @@ pub enum Building {
     Barracks,
     Library,
     Aqueduct,
+    Road,
 }
 
 impl Building {
@@ -94,6 +95,7 @@ impl Building {
             Self::Barracks => "Barracks",
             Self::Library => "Library",
             Self::Aqueduct => "Aqueduct",
+            Self::Road => "Road",
         }
     }
 
@@ -146,14 +148,23 @@ impl Building {
                 gold: 12.0,
                 ..Default::default()
             },
+            Self::Road => Resources {
+                timber: 4.0,
+                stone: 2.0,
+                gold: 1.0,
+                ..Default::default()
+            },
         }
     }
 
     pub fn allowed_on(self, terrain: Terrain) -> bool {
         match self {
-            Self::Farm | Self::Market | Self::Barracks | Self::Library | Self::Aqueduct => {
-                terrain.is_land()
-            }
+            Self::Farm
+            | Self::Market
+            | Self::Barracks
+            | Self::Library
+            | Self::Aqueduct
+            | Self::Road => terrain.is_land()
             Self::LumberMill => matches!(terrain, Terrain::Forest | Terrain::Grassland),
             Self::Quarry => matches!(
                 terrain,
@@ -198,6 +209,7 @@ impl Building {
                 influence: 0.2,
                 ..Default::default()
             },
+            Self::Road => Resources::default(),
         }
     }
 }
@@ -263,6 +275,14 @@ mod tests {
         };
         assert!(!stock.pay(&impossible));
         assert_eq!(stock, before);
+    }
+
+    #[test]
+    fn roads_can_be_constructed_on_any_land_without_direct_yield() {
+        assert!(Building::Road.allowed_on(Terrain::Grassland));
+        assert!(Building::Road.allowed_on(Terrain::Mountain));
+        assert!(!Building::Road.allowed_on(Terrain::Ocean));
+        assert_eq!(Building::Road.yield_bonus(), Resources::default());
     }
 
     #[test]

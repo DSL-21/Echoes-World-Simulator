@@ -66,6 +66,12 @@ struct TileVisual(Coord);
 struct CityVisual(Coord);
 
 #[derive(Component)]
+struct RiverVisual(Coord);
+
+#[derive(Component)]
+struct MainMenuOverlay;
+
+#[derive(Component)]
 struct ArmyVisual(u64);
 
 #[derive(Component)]
@@ -133,6 +139,9 @@ enum UiAction {
     Library,
     Barracks,
     Aqueduct,
+    Road,
+    StartCampaign,
+    ResumeCampaign,
     Recruit,
     RecruitCavalry,
     RecruitSiege,
@@ -179,6 +188,33 @@ fn setup(mut commands: Commands, session: Res<Session>) {
             CityVisual(coord),
             Visibility::Hidden,
         ));
+        if session.0.world.get(coord).is_some_and(|tile| tile.river) {
+            let neighbors = session.0.world.neighbors(coord);
+            let has_horizontal = neighbors.iter().any(|neighbor| {
+                neighbor.y == coord.y
+                    && session.0.world.get(*neighbor).is_some_and(|tile| tile.river)
+            });
+            let has_vertical = neighbors.iter().any(|neighbor| {
+                neighbor.x == coord.x
+                    && session.0.world.get(*neighbor).is_some_and(|tile| tile.river)
+            });
+            if has_horizontal || (!has_horizontal && !has_vertical) {
+                commands.spawn((
+                    Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(TILE_SIZE, 3.6)),
+                    Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.7)),
+                    RiverVisual(coord),
+                    Visibility::Visible,
+                ));
+            }
+            if has_vertical {
+                commands.spawn((
+                    Sprite::from_color(Color::srgb(0.12, 0.43, 0.68), Vec2::new(3.6, TILE_SIZE)),
+                    Transform::from_translation(position + Vec3::new(0.0, 0.0, 2.71)),
+                    RiverVisual(coord),
+                    Visibility::Visible,
+                ));
+            }
+        }
     }
 
     commands.spawn((
@@ -191,6 +227,127 @@ fn setup(mut commands: Commands, session: Res<Session>) {
     ));
 
     spawn_hud(&mut commands);
+    spawn_main_menu(&mut commands);
+}
+
+fn spawn_main_menu(commands: &mut Commands) {
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(0),
+                left: px(0),
+                width: percent(100),
+                height: percent(100),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.012, 0.021, 0.035, 0.96)),
+            MainMenuOverlay,
+            Visibility::Visible,
+        ))
+        .with_children(|overlay| {
+            overlay
+                .spawn((
+                    Node {
+                        width: px(560),
+                        padding: UiRect::all(px(34)),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: px(18),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.045, 0.067, 0.090, 0.99)),
+                ))
+                .with_children(|card| {
+                    card.spawn((
+                        Text::new("E C H O E S"),
+                        TextFont::from_font_size(42.0),
+                        TextColor(Color::srgb(0.91, 0.83, 0.61)),
+                    ));
+                    card.spawn((
+                        Text::new("A LIVING WORLD STRATEGY"),
+                        TextFont::from_font_size(14.0),
+                        TextColor(Color::srgb(0.57, 0.72, 0.78)),
+                    ));
+                    card.spawn((
+                        Text::new("Five realms. One changing world. A history waiting to be written."),
+                        TextFont::from_font_size(13.0),
+                        TextColor(Color::srgb(0.70, 0.77, 0.78)),
+                        Node { max_width: px(430), ..default() },
+                    ));
+
+                    card.spawn((
+                        Button,
+                        Hovered::default(),
+                        UiAction::StartCampaign,
+                        Node {
+                            width: percent(100),
+                            height: px(48),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.24, 0.40, 0.41)),
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new("START NEW CAMPAIGN"),
+                            TextFont::from_font_size(15.0),
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+
+                    card.spawn((
+                        Button,
+                        Hovered::default(),
+                        UiAction::ResumeCampaign,
+                        Node {
+                            width: percent(100),
+                            height: px(42),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.15, 0.28, 0.34)),
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new("RESUME CURRENT CAMPAIGN"),
+                            TextFont::from_font_size(13.0),
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+
+                    card.spawn((
+                        Button,
+                        Hovered::default(),
+                        UiAction::Load,
+                        Node {
+                            width: percent(100),
+                            height: px(42),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.15, 0.24, 0.32)),
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new("LOAD SAVED CAMPAIGN"),
+                            TextFont::from_font_size(13.0),
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+
+                    card.spawn((
+                        Text::new("F5 SAVE  •  F9 LOAD  •  ESC PAUSE / RETURN  •  WASD PAN"),
+                        TextFont::from_font_size(10.0),
+                        TextColor(Color::srgb(0.43, 0.57, 0.65)),
+                    ));
+                });
+        });
 }
 
 fn spawn_hud(commands: &mut Commands) {
@@ -686,6 +843,35 @@ fn spawn_hud(commands: &mut Commands) {
                             row.spawn((
                                 Button,
                                 Hovered::default(),
+                                UiAction::Road,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.28, 0.31, 0.32)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("ROAD  [9]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
                                 UiAction::Recruit,
                                 Node {
                                     width: px(160),
@@ -995,7 +1181,7 @@ fn spawn_hud(commands: &mut Commands) {
         },
         BackgroundColor(Color::srgba(0.025, 0.043, 0.065, 0.92)),
         Text::new(
-            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–8 DEVELOP  •  B CITY  •  G/V/J ARMY  •  L REFORM",
+            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–9 DEVELOP  •  B CITY  •  G/V/J ARMY  •  L REFORM",
         ),
         TextFont::from_font_size(10.5),
         TextColor(Color::srgb(0.57, 0.68, 0.72)),
@@ -1005,8 +1191,12 @@ fn spawn_hud(commands: &mut Commands) {
 fn handle_camera(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
+    menu: Single<&Visibility, With<MainMenuOverlay>>,
     mut camera: Single<&mut Transform, With<Camera2d>>,
 ) {
+    if **menu == Visibility::Visible {
+        return;
+    }
     let mut direction = Vec2::ZERO;
     if input.pressed(KeyCode::KeyA) {
         direction.x -= 1.0;
@@ -1042,9 +1232,10 @@ fn handle_mouse_selection(
     mouse: Res<ButtonInput<MouseButton>>,
     window: Single<&Window>,
     camera: Single<(&Camera, &GlobalTransform)>,
+    menu: Single<&Visibility, With<MainMenuOverlay>>,
     mut session: ResMut<Session>,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) {
+    if **menu == Visibility::Visible || !mouse.just_pressed(MouseButton::Left) {
         return;
     }
     let Some(cursor) = window.cursor_position() else {
@@ -1064,12 +1255,30 @@ fn handle_mouse_selection(
     session.0.select(Coord::new(x, y));
 }
 
-fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session>) {
+fn handle_keyboard(
+    input: Res<ButtonInput<KeyCode>>,
+    mut session: ResMut<Session>,
+    mut menu: Single<&mut Visibility, With<MainMenuOverlay>>,
+) {
     if input.just_pressed(KeyCode::F9) {
         match persistence::load_game(SAVE_PATH) {
-            Ok(loaded) => session.0 = loaded,
+            Ok(loaded) => {
+                session.0 = loaded;
+                **menu = Visibility::Hidden;
+            }
             Err(error) => session.0.add_log(format!("LOAD ERROR — {error}")),
         }
+        return;
+    }
+    if input.just_pressed(KeyCode::Escape) {
+        **menu = if **menu == Visibility::Visible {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        };
+        return;
+    }
+    if **menu == Visibility::Visible {
         return;
     }
     let game = &mut session.0;
@@ -1112,6 +1321,9 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
     }
     if input.just_pressed(KeyCode::Digit8) {
         game.build_selected(Building::Aqueduct);
+    }
+    if input.just_pressed(KeyCode::Digit9) {
+        game.build_selected(Building::Road);
     }
     if input.just_pressed(KeyCode::KeyB) {
         game.found_city();
@@ -1174,15 +1386,29 @@ fn handle_ui_activate(
     event: On<Activate>,
     mut session: ResMut<Session>,
     actions: Query<&UiAction>,
+    mut menu: Single<&mut Visibility, With<MainMenuOverlay>>,
 ) {
     let Ok(action) = actions.get(event.entity) else {
         return;
     };
     if matches!(*action, UiAction::Load) {
         match persistence::load_game(SAVE_PATH) {
-            Ok(loaded) => session.0 = loaded,
+            Ok(loaded) => {
+                session.0 = loaded;
+                **menu = Visibility::Hidden;
+            }
             Err(error) => session.0.add_log(format!("LOAD ERROR — {error}")),
         }
+        return;
+    }
+    if matches!(*action, UiAction::StartCampaign) {
+        let next_seed = session.0.seed.wrapping_add(1);
+        session.0 = GameState::new(next_seed);
+        **menu = Visibility::Hidden;
+        return;
+    }
+    if matches!(*action, UiAction::ResumeCampaign) {
+        **menu = Visibility::Hidden;
         return;
     }
     let game = &mut session.0;
@@ -1221,6 +1447,11 @@ fn handle_ui_activate(
         UiAction::Aqueduct => {
             game.build_selected(Building::Aqueduct);
         }
+        UiAction::Road => {
+            game.build_selected(Building::Road);
+        }
+        UiAction::StartCampaign => {}
+        UiAction::ResumeCampaign => {}
         UiAction::Recruit => {
             game.recruit_army(UnitClass::Infantry);
         }
@@ -1300,7 +1531,14 @@ fn handle_ui_activate(
     }
 }
 
-fn handle_map_layers(input: Res<ButtonInput<KeyCode>>, mut map_view: ResMut<MapView>) {
+fn handle_map_layers(
+    input: Res<ButtonInput<KeyCode>>,
+    menu: Single<&Visibility, With<MainMenuOverlay>>,
+    mut map_view: ResMut<MapView>,
+) {
+    if **menu == Visibility::Visible {
+        return;
+    }
     if input.just_pressed(KeyCode::F1) {
         map_view.layer = MapLayerMode::Terrain;
     } else if input.just_pressed(KeyCode::F2) {
@@ -1373,6 +1611,12 @@ fn update_tile_visuals(
                     }
                 }
             };
+            let mut rgb = rgb;
+            if tile.buildings.contains(&Building::Road) {
+                rgb[0] = (rgb[0] * 0.72 + 0.28).min(1.0);
+                rgb[1] = (rgb[1] * 0.72 + 0.28).min(1.0);
+                rgb[2] = (rgb[2] * 0.72 + 0.28).min(1.0);
+            }
             sprite.color = Color::srgb(rgb[0], rgb[1], rgb[2]);
         }
     }

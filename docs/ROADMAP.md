@@ -16,13 +16,16 @@ The project is being built as a connected simulation rather than a collection of
 ## 0.2 — Simulation foundation
 - [x] Separate simulation modules from Bevy presentation
 - [x] Expanded world terrain and deterministic generation
+- [x] Procedural rivers that follow land from mountains to coastal provinces
 - [x] Resource stockpiles and terrain/building yield model
 - [x] City founding and settlement population
+- [x] Road infrastructure with movement-supply and defensive effects
 - [x] Treaty matrix, trade agreements, war and truces
 - [x] Army recruitment, movement, supply and province battles
 - [x] Technology catalogue, prerequisites and research progress
 - [x] Periodic world events with persistent effects
 - [x] Camera pan and zoom
+- [x] Main menu with new campaign, resume, load and Escape pause/resume
 - [x] Strategic map overlays for terrain, political ownership, population, resource potential and infrastructure
 - [x] Versioned JSON save/load
 - [x] Rival AI city founding and personality-based province development
@@ -57,7 +60,7 @@ The project is being built as a connected simulation rather than a collection of
 ## 0.5 — World presentation and release quality
 - [ ] Province names, animated borders, trade-route and army-range overlays
 - [ ] City and army models/icons with animated state changes
-- [ ] Main menu, scenario setup, settings and tutorial
+- [ ] Scenario setup, settings and tutorial (main campaign menu is implemented)
 - [ ] Audio, ambience, music and event presentation
 - [ ] Performance profiling and large-world optimization
 - [ ] Release workflow, versioned Windows packages and Linux build
