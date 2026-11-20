@@ -2,6 +2,8 @@
 
 ## 0.2.0-dev — Simulation foundation
 
+- Added multi-year AI simulation stress tests across multiple world seeds, deterministic replay coverage, and stricter validation for saved campaign state.
+
 - Added dynamic province borders that render ownership frontiers and update when land is claimed or captured.
 - Made unbridged rivers increase marching supply costs and reduce attacking force; roads mitigate both effects.
 
