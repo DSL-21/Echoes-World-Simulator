@@ -1558,6 +1558,8 @@ mod tests {
 
         for tile in &mut game.world.tiles {
             tile.terrain = Terrain::Ocean;
+            tile.owner = None;
+            tile.city = None;
             tile.buildings.clear();
         }
         for coord in [origin, Coord::new((origin.x + 1).rem_euclid(game.world.width), origin.y),
