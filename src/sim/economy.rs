@@ -69,6 +69,21 @@ impl Resources {
         self.science = self.science.max(0.0);
         self.influence = self.influence.max(0.0);
     }
+
+    /// Returns whether every stockpile value is finite and non-negative.
+    pub fn is_finite_non_negative(&self) -> bool {
+        [
+            self.food,
+            self.timber,
+            self.stone,
+            self.iron,
+            self.gold,
+            self.science,
+            self.influence,
+        ]
+        .into_iter()
+        .all(|value| value.is_finite() && value >= 0.0)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
