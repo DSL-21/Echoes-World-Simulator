@@ -1552,20 +1552,20 @@ mod tests {
     #[test]
     fn maritime_trade_can_be_chartered_between_port_cities() {
         let mut game = GameState::new(2034);
-        let origin = Coord::new(2, 2);
-        let destination = Coord::new(5, 2);
+        let origin = game.factions[PLAYER_ID].capital;
+        let destination = Coord::new((origin.x + 3).rem_euclid(game.world.width), origin.y);
         game.factions[PLAYER_ID].capital = origin;
 
-        for coord in [origin, Coord::new(3, 2), Coord::new(4, 2), destination] {
+        for tile in &mut game.world.tiles {
+            tile.terrain = Terrain::Ocean;
+            tile.buildings.clear();
+        }
+        for coord in [origin, Coord::new((origin.x + 1).rem_euclid(game.world.width), origin.y),
+            Coord::new((origin.x + 2).rem_euclid(game.world.width), origin.y), destination] {
             let tile = game.world.get_mut(coord).unwrap();
-            tile.terrain = if coord == origin || coord == destination {
-                Terrain::Coast
-            } else {
-                Terrain::Ocean
-            };
+            tile.terrain = if coord == origin || coord == destination { Terrain::Coast } else { Terrain::Ocean };
             tile.owner = None;
             tile.city = None;
-            tile.buildings.clear();
         }
         for (coord, owner, city) in [
             (origin, PLAYER_ID, "Aurelia Harbour"),
