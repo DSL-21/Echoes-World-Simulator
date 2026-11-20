@@ -48,10 +48,11 @@ The goal is a systemic world in which independent realms expand, develop economi
 | X | Declare war on the selected realm |
 | P | Offer a truce to the selected realm |
 | L | Enact the next national civic policy (costs gold and influence; six-year cooldown) |
+| [ / ] | Lower / raise the national tax rate by 2 percentage points |
 | F5 | Save campaign to echoes_save.json |
 | F9 | Load campaign from echoes_save.json |
 
-The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
 ## Build from source
 

@@ -103,6 +103,8 @@ enum UiAction {
     Save,
     Load,
     Reform,
+    TaxLower,
+    TaxRaise,
 }
 
 fn setup(mut commands: Commands, session: Res<Session>) {
@@ -564,6 +566,55 @@ fn spawn_hud(commands: &mut Commands) {
                             row.spawn((
                                 Button,
                                 Hovered::default(),
+                                UiAction::TaxLower,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.20, 0.32, 0.35)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("LOWER TAX  ["),
+                                    TextFont::from_font_size(10.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
+                                UiAction::TaxRaise,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.42, 0.26, 0.20)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("RAISE TAX  ]"),
+                                    TextFont::from_font_size(10.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
                                 UiAction::Trade,
                                 Node {
                                     width: px(160),
@@ -857,6 +908,12 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
     if input.just_pressed(KeyCode::KeyL) {
         game.cycle_player_policy();
     }
+    if input.just_pressed(KeyCode::BracketLeft) {
+        game.adjust_tax_rate(-0.02);
+    }
+    if input.just_pressed(KeyCode::BracketRight) {
+        game.adjust_tax_rate(0.02);
+    }
     if input.just_pressed(KeyCode::KeyM) {
         game.move_nearest_army_to_selected();
     }
@@ -990,6 +1047,12 @@ fn handle_ui_activate(
         UiAction::Reform => {
             game.cycle_player_policy();
         }
+        UiAction::TaxLower => {
+            game.adjust_tax_rate(-0.02);
+        }
+        UiAction::TaxRaise => {
+            game.adjust_tax_rate(0.02);
+        }
     }
 }
 
@@ -1113,13 +1176,14 @@ fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
                 game.market.iron_price
             ),
             HudLine::Realm => format!(
-                "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\n{}  •  {}\nSTABILITY {:.0}%  •  UNREST {:.0}%  •  LEGITIMACY {:.0}%\nPRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",
+                "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\n{}  •  {}\nTAX {:.0}%  •  STABILITY {:.0}%  •  UNREST {:.0}%  •  LEGITIMACY {:.0}%\nPRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",
                 player.population,
                 game.owned_count(PLAYER_ID),
                 game.city_count(PLAYER_ID),
                 game.army_count(PLAYER_ID),
                 player.government.name(),
                 player.policy.name(),
+                player.tax_rate * 100.0,
                 player.stability,
                 player.unrest,
                 player.legitimacy,
