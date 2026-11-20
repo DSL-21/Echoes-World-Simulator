@@ -379,56 +379,70 @@ fn process_naval_warfare(game: &mut GameState) {
             continue;
         }
 
-        // Recruit at a port when the realm has no army there; this gives the navy
-        // a reliable embarkation point without creating unlimited AI armies.
-        let port_with_army = ports.iter().copied().find(|port| {
-            game.armies.iter().any(|army| {
-                army.owner == owner && army.position == *port && army.embarked_in.is_none()
-            })
-        });
-        let embark_port = if let Some(port) = port_with_army {
-            port
+        // Continue an active expedition before considering a new embarkation.
+        // This prevents the AI from commissioning duplicate fleets while troops are at sea.
+        let active_fleet = game.naval_fleets.iter().find(|fleet| {
+            fleet.owner == owner
+                && game.armies.iter().any(|army| army.embarked_in == Some(fleet.id))
+        }).map(|fleet| fleet.id);
+
+        let (fleet_id, should_embark) = if let Some(id) = active_fleet {
+            (id, false)
         } else {
-            if game.army_count(owner) >= 3 || game.turn % 4 != owner as u32 % 4 {
-                continue;
-            }
-            let port = ports[0];
-            let (gold, iron, timber) = recruitment_cost(UnitClass::Infantry);
-            let cost = Resources { gold, iron, timber, ..Default::default() };
-            if !game.factions[owner].resources.pay(&cost) {
-                continue;
-            }
-            let id = game.next_army_id;
-            game.next_army_id += 1;
-            game.armies.push(Army::new(id, owner, port, UnitClass::Infantry));
-            port
+            // Recruit at a port when the realm has no army there; keep the force cap low.
+            let port_with_army = ports.iter().copied().find(|port| {
+                game.armies.iter().any(|army| {
+                    army.owner == owner && army.position == *port && army.embarked_in.is_none()
+                })
+            });
+            let embark_port = if let Some(port) = port_with_army {
+                port
+            } else {
+                if game.army_count(owner) >= 3 || game.turn % 4 != owner as u32 % 4 {
+                    continue;
+                }
+                let port = ports[0];
+                let (gold, iron, timber) = recruitment_cost(UnitClass::Infantry);
+                let cost = Resources { gold, iron, timber, ..Default::default() };
+                if !game.factions[owner].resources.pay(&cost) {
+                    continue;
+                }
+                let id = game.next_army_id;
+                game.next_army_id += 1;
+                game.armies.push(Army::new(id, owner, port, UnitClass::Infantry));
+                port
+            };
+
+            let existing = game.naval_fleets.iter().find(|fleet| {
+                fleet.owner == owner && fleet.position == embark_port
+            }).map(|fleet| fleet.id);
+            let id = if let Some(id) = existing {
+                id
+            } else {
+                let cost = Resources { gold: 45.0, timber: 30.0, iron: 8.0, ..Default::default() };
+                if !game.factions[owner].resources.pay(&cost) {
+                    continue;
+                }
+                let id = game.next_naval_fleet_id;
+                game.next_naval_fleet_id += 1;
+                game.naval_fleets.push(NavalFleet::new(id, owner, embark_port));
+                let realm = game.factions[owner].name.clone();
+                game.add_log(format!("{realm} commissions a transport fleet for an amphibious campaign."));
+                id
+            };
+            (id, true)
         };
 
-        let fleet_id = if let Some(fleet) = game.naval_fleets.iter().find(|fleet| {
-            fleet.owner == owner && fleet.position == embark_port
-        }) {
-            fleet.id
-        } else {
-            let cost = Resources { gold: 45.0, timber: 30.0, iron: 8.0, ..Default::default() };
-            if !game.factions[owner].resources.pay(&cost) {
-                continue;
-            }
-            let id = game.next_naval_fleet_id;
-            game.next_naval_fleet_id += 1;
-            game.naval_fleets.push(NavalFleet::new(id, owner, embark_port));
-            let realm = game.factions[owner].name.clone();
-            game.add_log(format!("{realm} commissions a transport fleet for an amphibious campaign."));
-            id
-        };
-
-        let capacity = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
-            .map(|fleet| fleet.capacity).unwrap_or(0);
-        let aboard = game.armies.iter().filter(|army| army.embarked_in == Some(fleet_id)).count();
-        if aboard == 0 {
-            if let Some(army) = game.armies.iter_mut().find(|army| {
-                army.owner == owner && army.position == embark_port && army.embarked_in.is_none()
-            }) {
-                if capacity > 0 {
+        if should_embark {
+            let capacity = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
+                .map(|fleet| fleet.capacity).unwrap_or(0);
+            let aboard = game.armies.iter().filter(|army| army.embarked_in == Some(fleet_id)).count();
+            if aboard < capacity {
+                if let Some(army) = game.armies.iter_mut().find(|army| {
+                    army.owner == owner
+                        && army.position == game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id).map(|fleet| fleet.position).unwrap_or_default()
+                        && army.embarked_in.is_none()
+                }) {
                     army.embarked_in = Some(fleet_id);
                     let army_name = army.name.clone();
                     game.add_log(format!("{army_name} embarks for an amphibious invasion."));
