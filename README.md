@@ -52,7 +52,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | B | Found a city in the selected province |
 | G / V / J | Recruit infantry / cavalry / siege armies |
 | R | Start the next available technology |
-| M | Move the nearest army to the selected adjacent province |
+| M | Order the nearest army one legal land step toward the selected province |
 | T | Propose a trade agreement with the selected realm |
 | X | Declare war on the selected realm |
 | P | Offer a truce to the selected realm |
@@ -62,7 +62,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | F9 | Load campaign from echoes_save.json |
 | Escape | Open or close the campaign menu / pause overlay |
 
-The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. Roads reduce army supply loss on movement and strengthen a province's defensive position. Rivers are procedurally drawn along land routes from mountain regions to coastal provinces. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province per order. Select a distant destination and use M repeatedly; the nearest reachable army follows a legal land route, cannot cross open ocean, and needs a war declaration to enter hostile territory.
 
 ## Campaign goals
 

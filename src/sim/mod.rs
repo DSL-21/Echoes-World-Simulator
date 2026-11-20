@@ -754,17 +754,20 @@ impl GameState {
         let nearest = self
             .armies
             .iter()
-            .filter(|army| army.owner == PLAYER_ID && army.position.manhattan(selected) == 1)
-            .min_by_key(|army| army.position.manhattan(selected))
-            .map(|army| army.id);
-        let Some(id) = nearest else {
+            .filter(|army| army.owner == PLAYER_ID && army.position != selected)
+            .filter_map(|army| {
+                let step = ai::next_step_toward_destination(self, PLAYER_ID, army.position, selected)?;
+                Some((army.id, step, army.position.manhattan(selected)))
+            })
+            .min_by_key(|(_, _, distance)| *distance);
+        let Some((id, next_step, _)) = nearest else {
             Self::push_chronicle(
                 &mut self.chronicle,
-                "There is no army available to receive orders.",
+                "No army has a legal land route to the selected province.",
             );
             return false;
         };
-        self.move_army(id, selected)
+        self.move_army(id, next_step)
     }
 
     pub fn move_army(&mut self, army_id: u64, destination: Coord) -> bool {

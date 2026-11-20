@@ -22,6 +22,7 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Road infrastructure with movement-supply and defensive effects
 - [x] Treaty matrix, trade agreements, war and truces
 - [x] Army recruitment, movement, supply and province battles
+- [x] Player army pathfinding toward selected provinces over legal land routes
 - [x] Technology catalogue, prerequisites and research progress
 - [x] Periodic world events with persistent effects
 - [x] Camera pan and zoom

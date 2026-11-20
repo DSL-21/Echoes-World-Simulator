@@ -169,6 +169,54 @@ fn shares_border(game: &GameState, a: usize, b: usize) -> bool {
     false
 }
 
+/// Finds the first legal land step from an army's current position to a selected province.
+/// Neutral and friendly land is traversable; hostile territory is only traversable during war.
+pub fn next_step_toward_destination(
+    game: &GameState,
+    owner: usize,
+    start: Coord,
+    destination: Coord,
+) -> Option<Coord> {
+    if start == destination || game.world.get(destination).is_none() {
+        return None;
+    }
+
+    let mut queue = VecDeque::from([start]);
+    let mut visited = HashSet::from([start]);
+    let mut first_step: HashMap<Coord, Coord> = HashMap::new();
+
+    while let Some(current) = queue.pop_front() {
+        for next in game.world.neighbors(current) {
+            if !visited.insert(next) {
+                continue;
+            }
+            let Some(tile) = game.world.get(next) else {
+                continue;
+            };
+            if !tile.terrain.is_land() {
+                continue;
+            }
+            if tile.owner.is_some_and(|other| {
+                other != owner && game.treaty_between(owner, other) != Treaty::War
+            }) {
+                continue;
+            }
+
+            let step = if current == start {
+                next
+            } else {
+                *first_step.get(&current)?
+            };
+            if next == destination {
+                return Some(step);
+            }
+            first_step.insert(next, step);
+            queue.push_back(next);
+        }
+    }
+    None
+}
+
 fn issue_war_orders(game: &mut GameState) {
     let orders: Vec<(u64, Coord)> = game.armies.iter()
         .filter(|army| army.owner != PLAYER_ID)
@@ -210,6 +258,23 @@ fn next_step_toward_enemy(game: &GameState, army: &Army) -> Option<Coord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn player_destination_orders_find_a_legal_first_step() {
+        let game = GameState::new(2026);
+        let start = game.factions[PLAYER_ID].capital;
+        let target = game.world.coords().into_iter().find(|coord| {
+            start.manhattan(*coord) > 1
+                && game.world.get(*coord).is_some_and(|tile| {
+                    tile.terrain.is_land()
+                        && tile.owner.is_none()
+                        && next_step_toward_destination(&game, PLAYER_ID, start, *coord).is_some()
+                })
+        }).expect("generated map should contain reachable neutral land beyond the capital border");
+        let step = next_step_toward_destination(&game, PLAYER_ID, start, target).unwrap();
+        assert_eq!(step.manhattan(start), 1);
+        assert!(game.world.get(step).unwrap().terrain.is_land());
+    }
 
     #[test]
     fn rival_realms_expand_and_develop_without_corrupting_the_save_state() {
