@@ -740,6 +740,38 @@ impl GameState {
         true
     }
 
+    fn adjust_city_population(&mut self, faction_id: usize, delta: i32) {
+        let candidate = self.world.coords().into_iter().filter_map(|coord| {
+            let tile = self.world.get(coord)?;
+            if tile.owner != Some(faction_id) || tile.city.is_none() {
+                return None;
+            }
+            if delta < 0 && tile.population <= 1 {
+                return None;
+            }
+            Some((coord, tile.population))
+        }).min_by_key(|(_, population)| {
+            if delta > 0 { *population } else { u32::MAX - *population }
+        }).map(|(coord, _)| coord);
+
+        if let Some(coord) = candidate {
+            if let Some(tile) = self.world.get_mut(coord) {
+                if delta > 0 {
+                    tile.population = tile.population.saturating_add(delta as u32);
+                } else {
+                    tile.population = tile.population.saturating_sub(delta.unsigned_abs());
+                }
+            }
+        }
+    }
+
+    pub fn city_population(&self, faction_id: usize) -> u32 {
+        self.world.tiles.iter()
+            .filter(|tile| tile.owner == Some(faction_id) && tile.city.is_some())
+            .map(|tile| tile.population)
+            .sum()
+    }
+
     pub fn advance_turn(&mut self) {
         self.turn += 1;
         self.year += 1;
@@ -756,7 +788,7 @@ impl GameState {
                 .filter(|relation| relation.treaty == Treaty::War)
                 .count() as f32;
             let faction = &mut self.factions[faction_id];
-            let mut population_growth = false;
+            let mut population_change = 0_i32;
             let modifiers = faction.government.modifiers().combine(faction.policy.modifiers());
             let tax_multiplier = (1.0 + modifiers.tax).clamp(0.65, 1.5);
             let upkeep_multiplier = (1.0 - modifiers.army_upkeep).clamp(0.5, 1.0);
@@ -775,9 +807,13 @@ impl GameState {
                 faction.population += 1;
                 faction.resources.food -= 5.0;
                 faction.prestige += 0.25;
-                population_growth = true;
+                population_change = 1;
             } else if faction.resources.food < 2.0 {
+                let previous_population = faction.population;
                 faction.population = faction.population.saturating_sub(1).max(1);
+                if faction.population < previous_population {
+                    population_change = -1;
+                }
                 faction.stability -= 4.0;
                 faction.war_exhaustion = (faction.war_exhaustion + 0.5).min(100.0);
             }
@@ -806,20 +842,8 @@ impl GameState {
                 - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
             faction.war_exhaustion = (faction.war_exhaustion - 0.18).max(0.0);
 
-            if population_growth {
-                let city = self.world.coords().into_iter()
-                    .filter_map(|coord| {
-                        let tile = self.world.get(coord)?;
-                        (tile.owner == Some(faction_id) && tile.city.is_some())
-                            .then_some((coord, tile.population))
-                    })
-                    .min_by_key(|(_, population)| *population)
-                    .map(|(coord, _)| coord);
-                if let Some(coord) = city {
-                    if let Some(tile) = self.world.get_mut(coord) {
-                        tile.population += 1;
-                    }
-                }
+            if population_change != 0 {
+                self.adjust_city_population(faction_id, population_change);
             }
         }
 
@@ -865,11 +889,18 @@ impl GameState {
 
             let realm = self.factions[faction_id].name.clone();
             let position = format!("{}, {}", coord.x + 1, coord.y + 1);
-            let faction = &mut self.factions[faction_id];
-            faction.unrest = 48.0;
-            faction.legitimacy = (faction.legitimacy - 15.0).max(0.0);
-            faction.stability = (faction.stability - 12.0).max(0.0);
-            faction.population = faction.population.saturating_sub(1).max(1);
+            let population_decreased = {
+                let faction = &mut self.factions[faction_id];
+                faction.unrest = 48.0;
+                faction.legitimacy = (faction.legitimacy - 15.0).max(0.0);
+                faction.stability = (faction.stability - 12.0).max(0.0);
+                let previous_population = faction.population;
+                faction.population = faction.population.saturating_sub(1).max(1);
+                faction.population < previous_population
+            };
+            if population_decreased {
+                self.adjust_city_population(faction_id, -1);
+            }
             Self::push_chronicle(&mut self.chronicle, format!(
                 "REVOLT — {realm} loses a province at {position} as local unrest erupts."
             ));
@@ -1155,6 +1186,7 @@ mod tests {
         assert!(game.found_city());
         assert_eq!(game.factions[PLAYER_ID].population, before + 3);
         assert_eq!(game.world.get(site).unwrap().population, 3);
+        assert_eq!(game.city_population(PLAYER_ID), game.factions[PLAYER_ID].population);
     }
 
     #[test]
@@ -1235,6 +1267,37 @@ mod tests {
         game.resolve_unrest();
         assert!(game.owned_count(PLAYER_ID) < before);
         assert!(game.factions[PLAYER_ID].unrest < 95.0);
+    }
+
+    #[test]
+    fn city_population_tracks_growth_and_famine() {
+        let mut game = GameState::new(2030);
+        assert_eq!(game.city_population(PLAYER_ID), game.factions[PLAYER_ID].population);
+
+        game.factions[PLAYER_ID].resources.food = 500.0;
+        game.turn = 2;
+        game.advance_turn();
+        assert_eq!(game.city_population(PLAYER_ID), game.factions[PLAYER_ID].population);
+
+        game.factions[PLAYER_ID].resources.food = 0.0;
+        for _ in 0..4 {
+            game.advance_turn();
+        }
+        assert_eq!(game.city_population(PLAYER_ID), game.factions[PLAYER_ID].population);
+    }
+
+    #[test]
+    fn revolt_keeps_local_and_realm_population_synchronized() {
+        let mut game = GameState::new(2031);
+        let capital = game.factions[PLAYER_ID].capital;
+        let extra = game.world.coords().into_iter().find(|coord| {
+            *coord != capital && game.world.get(*coord).is_some_and(|tile| tile.owner.is_none())
+        }).expect("map has a neutral province");
+        game.world.get_mut(extra).unwrap().owner = Some(PLAYER_ID);
+        game.factions[PLAYER_ID].unrest = 95.0;
+        game.factions[PLAYER_ID].legitimacy = 10.0;
+        game.resolve_unrest();
+        assert_eq!(game.city_population(PLAYER_ID), game.factions[PLAYER_ID].population);
     }
 
     #[test]

@@ -13,7 +13,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Eight province building types with costs and production effects.
 - City founding and population tracking.
 - Diplomacy with trade agreements, alliances, war declarations and truces.
-- Internal politics with five government forms, six civic policies, legitimacy, unrest and province revolts.
+- Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
 - A global commodity market where food, timber, stone and iron prices react to world supply and demand.
 - Armies with recruitment, movement, supply, experience and province battles.
 - Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
@@ -67,6 +67,9 @@ Run all tests with cargo test.
 
 - src/sim/world.rs — coordinates, terrain, provinces and deterministic map generation.
 - src/sim/economy.rs — resource stockpiles, building costs and production.
+- src/sim/market.rs — dynamic global commodity prices from supply and demand.
+- src/sim/ai.rs — rival development, diplomacy and army pathfinding.
+- src/sim/society.rs — government types, civic policies and social modifiers.
 - src/sim/diplomacy.rs — treaty state and symmetric relations.
 - src/sim/military.rs — armies, supply, unit classes and combat strength.
 - src/sim/technology.rs — research catalogue and technology prerequisites.
