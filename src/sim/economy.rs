@@ -164,7 +164,7 @@ impl Building {
             | Self::Barracks
             | Self::Library
             | Self::Aqueduct
-            | Self::Road => terrain.is_land()
+            | Self::Road => terrain.is_land(),
             Self::LumberMill => matches!(terrain, Terrain::Forest | Terrain::Grassland),
             Self::Quarry => matches!(
                 terrain,
