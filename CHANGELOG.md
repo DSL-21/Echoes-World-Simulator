@@ -3,6 +3,8 @@
 ## 0.2.0-dev — Simulation foundation
 
 - Added naval transport fleets commissioned at owned coastal ports, two-unit troop capacity, embarkation, sea movement, coastal disembarkation, save validation and dedicated UI controls.
+- Added naval hull strength, hostile fleet engagements, sinking and cargo losses; AI weighs enemy fleet strength before committing to amphibious landings.
+- Added AI amphibious invasion planning, safe coastal landing selection and transition from naval transport to land warfare.
 
 - Added coastal Port construction, sea-lane pathfinding and maritime cargo convoys. Maritime routes require port cities at both ends, receive a capacity bonus, and are validated during save loading; older land-route saves remain compatible.
 
