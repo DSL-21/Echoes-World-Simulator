@@ -44,7 +44,7 @@ The project is being built as a connected simulation rather than a collection of
 - [x] International land trade routes with treaty access, cargo exports, partner payment and road-based capacity
 - [x] Player buy/sell orders for food, timber, stone and iron
 - [ ] Verify visual playability on a Windows desktop
-- [ ] Add automated multi-year balance and AI simulation tests
+- [x] Add automated multi-year balance and AI simulation tests
 
 ## 0.3 — Grand strategy systems
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
