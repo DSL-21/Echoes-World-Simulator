@@ -1550,6 +1550,48 @@ mod tests {
     }
 
     #[test]
+    fn maritime_trade_can_be_chartered_between_port_cities() {
+        let mut game = GameState::new(2034);
+        let origin = Coord::new(2, 2);
+        let destination = Coord::new(5, 2);
+        game.factions[PLAYER_ID].capital = origin;
+
+        for coord in [origin, Coord::new(3, 2), Coord::new(4, 2), destination] {
+            let tile = game.world.get_mut(coord).unwrap();
+            tile.terrain = if coord == origin || coord == destination {
+                Terrain::Coast
+            } else {
+                Terrain::Ocean
+            };
+            tile.owner = None;
+            tile.city = None;
+            tile.buildings.clear();
+        }
+        for (coord, owner, city) in [
+            (origin, PLAYER_ID, "Aurelia Harbour"),
+            (destination, 1, "Farhaven"),
+        ] {
+            let tile = game.world.get_mut(coord).unwrap();
+            tile.owner = Some(owner);
+            tile.city = Some(city.to_owned());
+            tile.buildings.push(Building::Port);
+        }
+        set_symmetric(
+            &mut game.relations,
+            PLAYER_ID,
+            1,
+            Treaty::TradeAgreement,
+            game.turn,
+        );
+
+        assert!(game.establish_trade_route(destination, Commodity::Food));
+        assert_eq!(game.trade_routes.len(), 1);
+        assert_eq!(game.trade_routes[0].route_type, TradeRouteType::Maritime);
+        assert!(route_is_open(&game, &game.trade_routes[0]));
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
     fn trade_routes_pause_when_the_treaty_is_broken() {
         let mut game = GameState::new(2034);
         let origin = game.factions[PLAYER_ID].capital;
