@@ -18,7 +18,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - International land trade routes that ship food, timber, stone or iron to treaty partners, with partner payments and road-based cargo capacity.
 - Four victory paths: territorial hegemony, scientific ascendancy, economic dominion and cultural legacy.
 - Defeat when the player loses the capital; completed campaigns become terminal and remain saved.
-- Armies with recruitment, movement, supply, experience and province battles.
+- Armies with recruitment, movement, supply, experience and province battles. Army pathfinding prefers roads and avoids unsafe borders; unbridged rivers increase supply costs and weaken attacks.
 - Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
 - Research tree with prerequisites and technology effects.
 - Periodic world events and a persistent chronicle.
