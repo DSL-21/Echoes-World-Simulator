@@ -1289,15 +1289,18 @@ fn handle_camera(
         camera.translation.y += movement.y;
     }
 
-    let mut zoom = camera.scale.x;
-    if input.just_pressed(KeyCode::Equal) || input.just_pressed(KeyCode::NumpadAdd) {
-        zoom *= 0.88;
+    let zoom_in = input.just_pressed(KeyCode::Equal) || input.just_pressed(KeyCode::NumpadAdd);
+    let zoom_out = input.just_pressed(KeyCode::Minus) || input.just_pressed(KeyCode::NumpadSubtract);
+    if zoom_in || zoom_out {
+        let mut zoom = camera.scale.x;
+        if zoom_in {
+            zoom *= 0.88;
+        }
+        if zoom_out {
+            zoom *= 1.14;
+        }
+        camera.scale = Vec3::splat(zoom.clamp(0.45, 2.2));
     }
-    if input.just_pressed(KeyCode::Minus) || input.just_pressed(KeyCode::NumpadSubtract) {
-        zoom *= 1.14;
-    }
-    zoom = zoom.clamp(0.45, 2.2);
-    camera.scale = Vec3::splat(zoom);
 }
 
 fn handle_mouse_selection(
@@ -1342,6 +1345,7 @@ fn handle_keyboard(
         }
         return;
     }
+
     if input.just_pressed(KeyCode::Escape) {
         **menu = if **menu == Visibility::Visible {
             Visibility::Hidden
@@ -1353,110 +1357,150 @@ fn handle_keyboard(
     if **menu == Visibility::Visible {
         return;
     }
-    let game = &mut session.0;
+
     if input.just_pressed(KeyCode::F5) {
-        match persistence::save_game(game, SAVE_PATH) {
-            Ok(()) => game.add_log("Campaign saved to echoes_save.json."),
-            Err(error) => game.add_log(format!("SAVE ERROR — {error}")),
+        match persistence::save_game(&session.0, SAVE_PATH) {
+            Ok(()) => session.0.add_log("Campaign saved to echoes_save.json."),
+            Err(error) => session.0.add_log(format!("SAVE ERROR — {error}")),
         }
         return;
     }
-    if game.is_ended() {
+    if session.0.is_ended() {
         return;
     }
-    if input.just_pressed(KeyCode::Space) {
-        game.advance_turn();
+
+    let gameplay_keys = [
+        KeyCode::Space,
+        KeyCode::KeyC,
+        KeyCode::Digit1,
+        KeyCode::Digit2,
+        KeyCode::Digit3,
+        KeyCode::Digit4,
+        KeyCode::Digit5,
+        KeyCode::Digit6,
+        KeyCode::Digit7,
+        KeyCode::Digit8,
+        KeyCode::Digit9,
+        KeyCode::KeyB,
+        KeyCode::KeyG,
+        KeyCode::KeyV,
+        KeyCode::KeyJ,
+        KeyCode::KeyR,
+        KeyCode::KeyL,
+        KeyCode::BracketLeft,
+        KeyCode::BracketRight,
+        KeyCode::KeyM,
+        KeyCode::KeyT,
+        KeyCode::KeyY,
+        KeyCode::KeyH,
+        KeyCode::KeyN,
+        KeyCode::KeyU,
+        KeyCode::KeyX,
+        KeyCode::KeyP,
+    ];
+    if !gameplay_keys.into_iter().any(|key| input.just_pressed(key)) {
+        return;
     }
-    if input.just_pressed(KeyCode::KeyC) {
-        game.claim_selected();
-    }
-    if input.just_pressed(KeyCode::Digit1) {
-        game.build_selected(Building::Farm);
-    }
-    if input.just_pressed(KeyCode::Digit2) {
-        game.build_selected(Building::LumberMill);
-    }
-    if input.just_pressed(KeyCode::Digit3) {
-        game.build_selected(Building::Quarry);
-    }
-    if input.just_pressed(KeyCode::Digit4) {
-        game.build_selected(Building::Market);
-    }
-    if input.just_pressed(KeyCode::Digit5) {
-        game.build_selected(Building::IronMine);
-    }
-    if input.just_pressed(KeyCode::Digit6) {
-        game.build_selected(Building::Library);
-    }
-    if input.just_pressed(KeyCode::Digit7) {
-        game.build_selected(Building::Barracks);
-    }
-    if input.just_pressed(KeyCode::Digit8) {
-        game.build_selected(Building::Aqueduct);
-    }
-    if input.just_pressed(KeyCode::Digit9) {
-        game.build_selected(Building::Road);
-    }
-    if input.just_pressed(KeyCode::KeyB) {
-        game.found_city();
-    }
-    if input.just_pressed(KeyCode::KeyG) {
-        game.recruit_army(UnitClass::Infantry);
-    }
-    if input.just_pressed(KeyCode::KeyV) {
-        game.recruit_army(UnitClass::Cavalry);
-    }
-    if input.just_pressed(KeyCode::KeyJ) {
-        game.recruit_army(UnitClass::Siege);
-    }
-    if input.just_pressed(KeyCode::KeyR) {
-        game.start_next_research();
-    }
-    if input.just_pressed(KeyCode::KeyL) {
-        game.cycle_player_policy();
-    }
-    if input.just_pressed(KeyCode::BracketLeft) {
-        game.adjust_tax_rate(-0.02);
-    }
-    if input.just_pressed(KeyCode::BracketRight) {
-        game.adjust_tax_rate(0.02);
-    }
-    if input.just_pressed(KeyCode::KeyM) {
-        game.move_nearest_army_to_selected();
-    }
-    if input.just_pressed(KeyCode::KeyT) {
-        if let Some(target) = selected_foreign_owner(game) {
-            game.offer_trade_agreement(target);
-        } else {
-            game.add_log("Select a province belonging to another realm before negotiating.");
+
+    // Avoid marking the whole campaign resource as changed on idle frames.
+    // This keeps map, river, border, city and army presentation systems event-driven.
+    {
+        let game = &mut session.bypass_change_detection().0;
+        if input.just_pressed(KeyCode::Space) {
+            game.advance_turn();
+        }
+        if input.just_pressed(KeyCode::KeyC) {
+            game.claim_selected();
+        }
+        if input.just_pressed(KeyCode::Digit1) {
+            game.build_selected(Building::Farm);
+        }
+        if input.just_pressed(KeyCode::Digit2) {
+            game.build_selected(Building::LumberMill);
+        }
+        if input.just_pressed(KeyCode::Digit3) {
+            game.build_selected(Building::Quarry);
+        }
+        if input.just_pressed(KeyCode::Digit4) {
+            game.build_selected(Building::Market);
+        }
+        if input.just_pressed(KeyCode::Digit5) {
+            game.build_selected(Building::IronMine);
+        }
+        if input.just_pressed(KeyCode::Digit6) {
+            game.build_selected(Building::Library);
+        }
+        if input.just_pressed(KeyCode::Digit7) {
+            game.build_selected(Building::Barracks);
+        }
+        if input.just_pressed(KeyCode::Digit8) {
+            game.build_selected(Building::Aqueduct);
+        }
+        if input.just_pressed(KeyCode::Digit9) {
+            game.build_selected(Building::Road);
+        }
+        if input.just_pressed(KeyCode::KeyB) {
+            game.found_city();
+        }
+        if input.just_pressed(KeyCode::KeyG) {
+            game.recruit_army(UnitClass::Infantry);
+        }
+        if input.just_pressed(KeyCode::KeyV) {
+            game.recruit_army(UnitClass::Cavalry);
+        }
+        if input.just_pressed(KeyCode::KeyJ) {
+            game.recruit_army(UnitClass::Siege);
+        }
+        if input.just_pressed(KeyCode::KeyR) {
+            game.start_next_research();
+        }
+        if input.just_pressed(KeyCode::KeyL) {
+            game.cycle_player_policy();
+        }
+        if input.just_pressed(KeyCode::BracketLeft) {
+            game.adjust_tax_rate(-0.02);
+        }
+        if input.just_pressed(KeyCode::BracketRight) {
+            game.adjust_tax_rate(0.02);
+        }
+        if input.just_pressed(KeyCode::KeyM) {
+            game.move_nearest_army_to_selected();
+        }
+        if input.just_pressed(KeyCode::KeyT) {
+            if let Some(target) = selected_foreign_owner(game) {
+                game.offer_trade_agreement(target);
+            } else {
+                game.add_log("Select a province belonging to another realm before negotiating.");
+            }
+        }
+        if input.just_pressed(KeyCode::KeyY) {
+            game.establish_trade_route(game.selected, Commodity::Food);
+        }
+        if input.just_pressed(KeyCode::KeyH) {
+            game.establish_trade_route(game.selected, Commodity::Timber);
+        }
+        if input.just_pressed(KeyCode::KeyN) {
+            game.establish_trade_route(game.selected, Commodity::Stone);
+        }
+        if input.just_pressed(KeyCode::KeyU) {
+            game.establish_trade_route(game.selected, Commodity::Iron);
+        }
+        if input.just_pressed(KeyCode::KeyX) {
+            if let Some(target) = selected_foreign_owner(game) {
+                game.declare_war(target);
+            } else {
+                game.add_log("Select a foreign province to identify a diplomatic target.");
+            }
+        }
+        if input.just_pressed(KeyCode::KeyP) {
+            if let Some(target) = selected_foreign_owner(game) {
+                game.offer_peace(target);
+            } else {
+                game.add_log("Select a foreign province to negotiate peace.");
+            }
         }
     }
-    if input.just_pressed(KeyCode::KeyY) {
-        game.establish_trade_route(game.selected, Commodity::Food);
-    }
-    if input.just_pressed(KeyCode::KeyH) {
-        game.establish_trade_route(game.selected, Commodity::Timber);
-    }
-    if input.just_pressed(KeyCode::KeyN) {
-        game.establish_trade_route(game.selected, Commodity::Stone);
-    }
-    if input.just_pressed(KeyCode::KeyU) {
-        game.establish_trade_route(game.selected, Commodity::Iron);
-    }
-    if input.just_pressed(KeyCode::KeyX) {
-        if let Some(target) = selected_foreign_owner(game) {
-            game.declare_war(target);
-        } else {
-            game.add_log("Select a foreign province to identify a diplomatic target.");
-        }
-    }
-    if input.just_pressed(KeyCode::KeyP) {
-        if let Some(target) = selected_foreign_owner(game) {
-            game.offer_peace(target);
-        } else {
-            game.add_log("Select a foreign province to negotiate peace.");
-        }
-    }
+    session.set_changed();
 }
 
 fn selected_foreign_owner(game: &GameState) -> Option<usize> {

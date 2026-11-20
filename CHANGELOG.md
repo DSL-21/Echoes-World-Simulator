@@ -1,46 +1,25 @@
 # Changelog
 
-## 0.2.0-dev — Simulation foundation
+## 0.2.0-dev — Living strategy foundation
 
-- Added dynamic province borders that render ownership frontiers and update when land is claimed or captured.
-- Made river and province-border overlays refresh from the active world when a new seeded campaign starts.
-- Made unbridged rivers increase marching supply costs and reduce attacking force; roads mitigate both effects.
-
-- Added international land trade routes for food, timber, stone and iron with treaty checks, partner payments, stock reserves and road-enhanced capacity.
-- Added route suspension when diplomatic access or the safe land corridor is lost.
-
-- Added five strategic map layers: terrain, political ownership, population, resource potential and infrastructure.
-- Added procedural rivers that wind from mountain regions to the coast.
-- Added buildable roads, with reduced army supply loss and stronger defensive positions.
-- Added a main campaign menu with new campaign, resume, load and Escape pause/resume.
-- Added player army route orders: select a distant province and the nearest reachable army advances one legal land step toward it.
-- Added procedural rivers that wind from mountain regions to the coast.
-- Added buildable roads, with reduced army supply loss and stronger defensive positions.
-- Added a main campaign menu with new campaign, resume, load and Escape pause/resume.
-- Added keyboard layer switching and a live map-mode label.
-
-- Replaced the single-file prototype model with separate simulation modules.
-- Expanded the world to a larger deterministic map with eight terrain classes.
-- Added seven resource types and terrain/building production.
-- Added eight province buildings with construction restrictions and costs.
-- Added cities, settlement population and city founding.
-- Added symmetric diplomacy relations, trade agreements, war and truces.
-- Added recruitable armies, movement, supply, experience and simple province battles.
-- Added a technology tree with prerequisites, ongoing research and economic effects.
-- Added deterministic periodic events with lasting campaign effects.
-- Added camera pan/zoom and an expanded Realm Council.
-- Added versioned JSON save/load through F5 and F9.
-- Added rival AI city founding and personality-based province development.
-- Added AI relationship drift, trade, alliances, timed truces and BFS army pathfinding.
-- Added war exhaustion pressure and expanded unit/building controls.
-- Added six government identities and six civic policies with economic and stability modifiers.
-- Added national policy reforms, legitimacy, unrest, and revolt-driven province loss.
-- Added global supply/demand commodity pricing for food, timber, stone and iron.
-- Added market buy/sell orders with spread, stockpile validation and live UI controls.
-- Added player-controlled tax policy with revenue and unrest trade-offs.
-- Added four victory paths, capital-loss defeat, and terminal campaign state.
-- Linked international trade-agreement income to the global market index and displayed current prices in the Realm Council.
-- Added tests for the simulation domains, rival turns and campaign persistence.
+- Replaced the single-file prototype with separate world, economy, diplomacy, military, society, market, AI, technology, events, trade-route and victory modules.
+- Expanded the world to a larger deterministic map with eight terrain classes, coastal transitions and winding rivers.
+- Added dynamic province borders, five strategic map layers and campaign-seed-aware river/border overlays.
+- Added seven resources and terrain/building production, with nine province building types including roads.
+- Added road and river effects to army pathfinding, supply costs, defensive positions and combat crossings.
+- Added city founding, settlement population, rival city development and population growth.
+- Added five rival realms with distinct AI personalities, expansion, diplomacy, trade and military decisions.
+- Added six government identities, six civic policies, national reforms, tax adjustment, legitimacy, unrest and province revolts.
+- Added diplomacy with symmetric relations, trade agreements, alliances, war declarations and truces.
+- Added a dynamic global market for food, timber, stone and iron, including player buy/sell orders.
+- Added international land trade routes with treaty checks, cargo exports, partner payments, reserve stock and road-enhanced capacity.
+- Added infantry, cavalry and siege recruitment, army movement, supply, experience and province battles.
+- Added research technologies with prerequisites, ongoing progress and economic effects.
+- Added deterministic periodic events with persistent effects and a campaign chronicle.
+- Added four victory paths, capital-loss defeat and terminal campaign state.
+- Added camera pan/zoom, a main campaign menu, pause/resume and versioned JSON save/load.
+- Added tests for the simulation domains, route transactions, road/river effects, AI turns and persistence.
+- Added Windows x64 CI builds with downloadable preview packages.
 
 ## 0.1.0-dev — Initial playable prototype
 

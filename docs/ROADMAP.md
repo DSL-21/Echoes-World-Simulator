@@ -15,62 +15,58 @@ The project is being built as a connected simulation rather than a collection of
 
 ## 0.2 — Simulation foundation
 - [x] Separate simulation modules from Bevy presentation
-- [x] Expanded world terrain and deterministic generation
-- [x] Procedural rivers that follow land from mountains to coastal provinces
-- [x] Procedural rivers that follow land from mountains to coastal provinces
+- [x] Expanded deterministic world generation with eight terrain classes
+- [x] Rivers following land from highlands to coastal provinces
+- [x] Dynamic province borders that respond to claims and conquest
+- [x] River and border overlays refresh for every newly seeded campaign
+- [x] Strategic map layers: terrain, ownership, population, resource potential and infrastructure
 - [x] Resource stockpiles and terrain/building yield model
-- [x] City founding and settlement population
-- [x] Road infrastructure with movement-supply and defensive effects
-- [x] Road infrastructure with movement-supply and defensive effects
-- [x] Treaty matrix, trade agreements, war and truces
-- [x] Army recruitment, movement, supply and province battles
-- [x] Player army pathfinding toward selected provinces over legal land routes
-- [x] Road- and river-aware army movement costs and crossing penalties
+- [x] Nine province building types, including roads and river-crossing effects
+- [x] City founding, settlement population and AI city founding
+- [x] Diplomacy: trade agreements, alliances, war and truces
+- [x] AI relationship drift, trade, alliances, truces and army decisions
+- [x] Armies with infantry, cavalry and siege classes, supply, experience and province battles
+- [x] Army pathfinding that accounts for roads, rivers, terrain and hostile borders
 - [x] Technology catalogue, prerequisites and research progress
 - [x] Periodic world events with persistent effects
-- [x] Camera pan and zoom
-- [x] Main menu with new campaign, resume, load and Escape pause/resume
-- [x] Main menu with new campaign, resume, load and Escape pause/resume
-- [x] Strategic map overlays for terrain, political ownership, population, resource potential and infrastructure
-- [x] Versioned JSON save/load
-- [x] Rival AI city founding and personality-based province development
-- [x] AI relationship drift, trade, alliances, truces and army pathfinding
 - [x] Government types and civic policies with economic/stability effects
 - [x] Legitimacy, unrest pressure and province revolt resolution
-- [x] Player national reform action with resource cost and cooldown
+- [x] National reform action with resource cost and cooldown
 - [x] Adjustable tax rate with bounded values and unrest consequences
 - [x] Four victory paths, capital-loss defeat condition and terminal campaign state
-- [x] Global commodity market with supply/demand price movement and trade-income effects
-- [x] International land trade routes with treaty access, cargo exports, partner payment and road-based capacity
-- [x] Player buy/sell orders for food, timber, stone and iron
+- [x] Global commodity market with supply/demand prices and player buy/sell orders
+- [x] International land trade routes with treaty access, cargo exports and partner payments
+- [x] Camera pan/zoom, main menu, resume, load and Escape-to-pause
+- [x] Versioned JSON save/load
+- [x] Event-driven map and HUD refresh on actual campaign changes
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests
 
 ## 0.3 — Grand strategy systems
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
-- [x] International overland trade routes
 - [ ] Ports, maritime trade routes and naval transport
-- [ ] Diplomacy AI: proposals, alliances, guarantees and demands
-- [ ] War goals, peace terms, occupations and sieges
+- [ ] Deeper diplomacy: proposals, guarantees, demands and diplomatic leverage
+- [ ] War goals, peace terms, occupations, sieges and capitulation
 - [ ] Unit recruitment by province, commanders and army composition
-- [ ] Province autonomy and governors (unrest/revolt foundations are implemented)
-- [ ] Faction objectives, personalities and difficulty settings
+- [ ] Province autonomy, governors and regional administration
+- [ ] Faction objectives, personalities, difficulty settings and scenario rules
 
 ## 0.4 — Civilization and world history
-- [ ] Culture groups, languages and religious/civic institutions
+- [ ] Culture groups, languages and civic institutions
 - [ ] Migration, assimilation and demographic change
 - [ ] Dynamic historical event chains
 - [ ] Deeper research tree and era progression
 - [ ] Institutions, laws, succession and political crises
-- [ ] Victory conditions and sandbox campaign rules
+- [ ] Additional sandbox and campaign victory conditions
 
 ## 0.5 — World presentation and release quality
-- [ ] Province names, animated borders, trade-route and army-range overlays
+- [ ] Province names, city labels and map tooltips
+- [ ] Animated border transitions, trade-route lines and army-range overlays
 - [ ] City and army models/icons with animated state changes
-- [ ] Scenario setup, settings and tutorial (main campaign menu is implemented)
+- [ ] Scenario setup, settings, tutorial and in-game encyclopedia
 - [ ] Audio, ambience, music and event presentation
 - [ ] Performance profiling and large-world optimization
-- [ ] Release workflow, versioned Windows packages and Linux build
+- [ ] Versioned Windows packages and Linux/macOS builds
 
 ## Engineering rules
 
@@ -78,4 +74,5 @@ The project is being built as a connected simulation rather than a collection of
 - Randomized world generation and events are seed-driven and reproducible.
 - Major player actions validate costs and preconditions before changing state.
 - Save files carry an explicit format version and are validated on load.
+- Idle input polling must not invalidate the entire world presentation.
 - Each milestone must pass formatting, tests and a Windows x64 build.
