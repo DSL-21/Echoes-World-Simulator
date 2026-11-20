@@ -358,6 +358,43 @@ mod tests {
     use super::*;
 
     #[test]
+    fn merchant_personality_makes_trade_proposals_more_likely() {
+        let mut game = GameState::new(2040);
+        game.factions[1].personality = AiPersonality::Merchant;
+        game.factions[2].personality = AiPersonality::Balanced;
+        assert!(!trade_proposal_accepted(&game, 1, 2, 20));
+        assert!(trade_proposal_accepted(&game, 1, 2, 30));
+        game.factions[1].personality = AiPersonality::Expansionist;
+        assert!(!trade_proposal_accepted(&game, 1, 2, 30));
+    }
+
+    #[test]
+    fn alliance_proposals_require_trust_or_a_shared_enemy() {
+        let mut game = GameState::new(2041);
+        assert!(!alliance_proposal_accepted(&game, 1, 2, 55));
+        assert!(alliance_proposal_accepted(&game, 1, 2, 68));
+        set_symmetric(&mut game.relations, 1, 3, Treaty::War, game.turn);
+        set_symmetric(&mut game.relations, 2, 3, Treaty::War, game.turn);
+        assert!(alliance_proposal_accepted(&game, 1, 2, 48));
+    }
+
+    #[test]
+    fn war_proposals_need_hostility_border_pressure_and_armies() {
+        let mut game = GameState::new(2042);
+        assert!(!war_proposal_accepted(&game, 1, 2, -90));
+        game.factions[1].personality = AiPersonality::Expansionist;
+        game.factions[2].personality = AiPersonality::Defender;
+        let first = game.factions[1].capital;
+        let second = game.world.neighbors(first).into_iter().find(|coord| {
+            game.world.get(*coord).is_some_and(|tile| tile.terrain.is_land())
+        }).unwrap();
+        game.world.get_mut(second).unwrap().owner = Some(2);
+        game.armies.push(Army::new(1, 1, first, super::super::military::UnitClass::Infantry));
+        game.armies.push(Army::new(2, 2, second, super::super::military::UnitClass::Infantry));
+        assert!(war_proposal_accepted(&game, 1, 2, -55));
+    }
+
+    #[test]
     fn roads_reduce_army_path_cost_on_land_provinces() {
         let mut game = GameState::new(2030);
         let coord = game.world.coords().into_iter().find(|coord| {
