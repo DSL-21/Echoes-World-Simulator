@@ -10,6 +10,9 @@ pub mod trade_routes;
 pub mod victory;
 pub mod world;
 
+#[cfg(test)]
+mod stress_tests;
+
 use std::collections::{HashSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
@@ -1368,13 +1371,83 @@ impl GameState {
         {
             return Err("The diplomacy table is inconsistent with the realm list.".to_owned());
         }
-        if self.armies.iter().any(|army| {
-            army.owner >= self.factions.len() || self.world.get(army.position).is_none()
-        }) {
-            return Err("An army in the save file has an invalid owner or position.".to_owned());
+        for (id, faction) in self.factions.iter().enumerate() {
+            if faction.id != id || faction.name.trim().is_empty() {
+                return Err("The saved realm list contains an invalid identity or name.".to_owned());
+            }
+            if !faction.resources.is_finite_non_negative() {
+                return Err(format!("{} has an invalid resource stockpile.", faction.name));
+            }
+            if !faction.stability.is_finite()
+                || !(0.0..=100.0).contains(&faction.stability)
+                || !faction.unrest.is_finite()
+                || !(0.0..=100.0).contains(&faction.unrest)
+                || !faction.legitimacy.is_finite()
+                || !(0.0..=100.0).contains(&faction.legitimacy)
+                || !faction.war_exhaustion.is_finite()
+                || !(0.0..=100.0).contains(&faction.war_exhaustion)
+                || !faction.tax_rate.is_finite()
+                || !(0.08..=0.35).contains(&faction.tax_rate)
+                || !faction.prestige.is_finite()
+                || faction.prestige < 0.0
+                || !faction.research_progress.is_finite()
+                || faction.research_progress < 0.0
+            {
+                return Err(format!("{} has invalid political or research statistics.", faction.name));
+            }
         }
-        if !self.market.is_valid() {
-            return Err("The saved global market contains an invalid commodity price.".to_owned());
+
+        for a in 0..self.relations.len() {
+            for b in 0..self.relations.len() {
+                let relation = &self.relations[a][b];
+                let reverse = &self.relations[b][a];
+                if !(-100..=100).contains(&relation.opinion)
+                    || relation.opinion != reverse.opinion
+                    || relation.treaty != reverse.treaty
+                    || relation.changed_turn != reverse.changed_turn
+                {
+                    return Err("The saved diplomacy table is invalid or asymmetric.".to_owned());
+                }
+            }
+        }
+
+        for tile in &self.world.tiles {
+            if tile.owner.is_some_and(|owner| owner >= self.factions.len()) {
+                return Err("A province references a realm that does not exist.".to_owned());
+            }
+            if tile.city.is_some() && tile.owner.is_none() {
+                return Err("A city cannot exist outside the control of a realm.".to_owned());
+            }
+            let mut unique_buildings = HashSet::new();
+            if tile.buildings.iter().any(|building| !unique_buildings.insert(*building)) {
+                return Err("A province contains a duplicate building.".to_owned());
+            }
+        }
+
+        let mut army_ids = HashSet::new();
+        for army in &self.armies {
+            if army.owner >= self.factions.len()
+                || self.world.get(army.position).is_none()
+                || !army_ids.insert(army.id)
+                || !army.strength.is_finite()
+                || army.strength < 0.0
+                || !army.supply.is_finite()
+                || !(0.0..=100.0).contains(&army.supply)
+                || !army.experience.is_finite()
+                || army.experience < 0.0
+            {
+                return Err("An army in the save file has invalid identity, owner, position or statistics.".to_owned());
+            }
+        }
+        if self.next_army_id <= self.armies.iter().map(|army| army.id).max().unwrap_or(0) {
+            return Err("The next army identifier would collide with an existing army.".to_owned());
+        }
+
+        if !self.market.is_valid()
+            || !self.market.last_supply.is_finite_non_negative()
+            || !self.market.last_demand.is_finite_non_negative()
+        {
+            return Err("The saved global market contains invalid prices, supply or demand.".to_owned());
         }
         if self.outcome.as_ref().is_some_and(|outcome| outcome.winner_id >= self.factions.len()) {
             return Err("The save references a winning faction that does not exist.".to_owned());
@@ -1392,10 +1465,15 @@ impl GameState {
                 return Err("A trade route contains invalid realm, identity or endpoint data.".to_owned());
             }
             if route.path.windows(2).any(|pair| pair[0].manhattan(pair[1]) != 1)
-                || route.path.iter().any(|coord| self.world.get(*coord).is_none())
+                || route.path.iter().any(|coord| {
+                    self.world.get(*coord).is_none_or(|tile| !tile.terrain.is_land())
+                })
             {
                 return Err("A trade route contains an invalid land path.".to_owned());
             }
+        }
+        if self.next_trade_route_id <= self.trade_routes.iter().map(|route| route.id).max().unwrap_or(0) {
+            return Err("The next trade-route identifier would collide with an existing route.".to_owned());
         }
         if self.outcome.is_some() && self.defeat_reason.is_some() {
             return Err("The campaign cannot be both won and lost.".to_owned());
