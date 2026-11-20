@@ -20,6 +20,7 @@
 - Added national policy reforms, legitimacy, unrest, and revolt-driven province loss.
 - Added global supply/demand commodity pricing for food, timber, stone and iron.
 - Added player-controlled tax policy with revenue and unrest trade-offs.
+- Added four victory paths, capital-loss defeat, and terminal campaign state.
 - Linked international trade-agreement income to the global market index and displayed current prices in the Realm Council.
 - Added tests for the simulation domains, rival turns and campaign persistence.
 

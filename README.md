@@ -15,6 +15,8 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Diplomacy with trade agreements, alliances, war declarations and truces.
 - Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
 - A global commodity market where food, timber, stone and iron prices react to world supply and demand.
+- Four victory paths: territorial hegemony, scientific ascendancy, economic dominion and cultural legacy.
+- Defeat when the player loses the capital; completed campaigns become terminal and remain saved.
 - Armies with recruitment, movement, supply, experience and province battles.
 - Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
 - Research tree with prerequisites and technology effects.
@@ -53,6 +55,17 @@ The goal is a systemic world in which independent realms expand, develop economi
 | F9 | Load campaign from echoes_save.json |
 
 The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+
+## Campaign goals
+
+A realm can win in one of four ways:
+
+- **Territorial hegemony:** control at least 40% of all land provinces.
+- **Scientific ascendancy:** complete seven technologies.
+- **Economic dominion:** hold at least four cities, reach 35 population and accumulate 600 gold.
+- **Cultural legacy:** reach 120 prestige with at least 65 stability and 75 legitimacy.
+
+Losing the Aurelian League's capital ends the campaign in defeat. The campaign result is shown in the top bar and is included in the save file.
 
 ## Build from source
 

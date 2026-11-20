@@ -30,6 +30,7 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Legitimacy, unrest pressure and province revolt resolution
 - [x] Player national reform action with resource cost and cooldown
 - [x] Adjustable tax rate with bounded values and unrest consequences
+- [x] Four victory paths, capital-loss defeat condition and terminal campaign state
 - [x] Global commodity market with supply/demand price movement and trade-income effects
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests

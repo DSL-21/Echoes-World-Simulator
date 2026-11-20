@@ -6,6 +6,7 @@ pub mod market;
 pub mod military;
 pub mod society;
 pub mod technology;
+pub mod victory;
 pub mod world;
 
 use std::collections::VecDeque;
@@ -20,6 +21,7 @@ use self::{
     military::{Army, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
+    victory::{CampaignOutcome, VictoryPath},
     world::{Coord, WorldMap},
 };
 
@@ -126,6 +128,10 @@ pub struct GameState {
     pub seed: u64,
     pub next_army_id: u64,
     pub chronicle: VecDeque<String>,
+    #[serde(default)]
+    pub outcome: Option<CampaignOutcome>,
+    #[serde(default)]
+    pub defeat_reason: Option<String>,
 }
 
 impl GameState {
@@ -195,12 +201,69 @@ impl GameState {
             seed,
             next_army_id: 1,
             chronicle: VecDeque::new(),
+            outcome: None,
+            defeat_reason: None,
         };
         game.add_log("The age of realms begins. Five powers rise across an uncharted world.");
         game.add_log(
             "Your council awaits. Expand carefully, develop your provinces and shape history.",
         );
         game
+    }
+
+    pub fn is_ended(&self) -> bool {
+        self.outcome.is_some() || self.defeat_reason.is_some()
+    }
+
+    pub fn check_campaign_end(&mut self) -> bool {
+        if self.is_ended() {
+            return true;
+        }
+
+        let player_capital = self.factions[PLAYER_ID].capital;
+        if self.world.get(player_capital).is_none_or(|tile| tile.owner != Some(PLAYER_ID)) {
+            self.defeat_reason = Some("The capital has fallen. The Aurelian League can no longer continue the campaign.".to_owned());
+            Self::push_chronicle(
+                &mut self.chronicle,
+                "DEFEAT — the capital has fallen and the Aurelian League's campaign is over.",
+            );
+            return true;
+        }
+
+        let total_land = self.world.tiles.iter().filter(|tile| tile.terrain.is_land()).count();
+        let hegemony_target = ((total_land as f32) * 0.40).ceil() as usize;
+        for faction_id in 0..self.factions.len() {
+            let faction = &self.factions[faction_id];
+            let path = if self.owned_count(faction_id) >= hegemony_target.max(1) {
+                Some(VictoryPath::TerritorialHegemony)
+            } else if faction.technologies.len() >= 7 {
+                Some(VictoryPath::ScientificAscendancy)
+            } else if self.city_count(faction_id) >= 4
+                && faction.population >= 35
+                && faction.resources.gold >= 600.0
+            {
+                Some(VictoryPath::EconomicDominion)
+            } else if faction.prestige >= 120.0
+                && faction.stability >= 65.0
+                && faction.legitimacy >= 75.0
+            {
+                Some(VictoryPath::CulturalLegacy)
+            } else {
+                None
+            };
+
+            if let Some(path) = path {
+                let outcome = CampaignOutcome { winner_id: faction_id, year: self.year, path };
+                let winner = self.factions[faction_id].name.clone();
+                Self::push_chronicle(
+                    &mut self.chronicle,
+                    format!("VICTORY — {winner} achieves {} in year {}.", path.name(), self.year),
+                );
+                self.outcome = Some(outcome);
+                return true;
+            }
+        }
+        false
     }
 
     pub fn add_log(&mut self, message: impl Into<String>) {
@@ -757,6 +820,9 @@ impl GameState {
     }
 
     pub fn advance_turn(&mut self) {
+        if self.is_ended() {
+            return;
+        }
         self.turn += 1;
         self.year += 1;
         self.refresh_market();
@@ -848,6 +914,7 @@ impl GameState {
         if self.turn % 6 == 0 {
             self.resolve_unrest();
         }
+        self.check_campaign_end();
 
         let year = self.year;
         let provinces = self.owned_count(PLAYER_ID);
@@ -1139,6 +1206,12 @@ impl GameState {
         if !self.market.is_valid() {
             return Err("The saved global market contains an invalid commodity price.".to_owned());
         }
+        if self.outcome.as_ref().is_some_and(|outcome| outcome.winner_id >= self.factions.len()) {
+            return Err("The save references a winning faction that does not exist.".to_owned());
+        }
+        if self.outcome.is_some() && self.defeat_reason.is_some() {
+            return Err("The campaign cannot be both won and lost.".to_owned());
+        }
         Ok(())
     }
 }
@@ -1235,6 +1308,29 @@ mod tests {
         assert!(game.cycle_player_policy());
         assert_ne!(game.factions[PLAYER_ID].policy, before);
         assert!(!game.cycle_player_policy());
+    }
+
+    #[test]
+    fn cultural_victory_ends_the_campaign_and_stops_future_turns() {
+        let mut game = GameState::new(2031);
+        game.factions[PLAYER_ID].prestige = 125.0;
+        game.factions[PLAYER_ID].stability = 80.0;
+        game.factions[PLAYER_ID].legitimacy = 82.0;
+        assert!(game.check_campaign_end());
+        assert_eq!(game.outcome.as_ref().unwrap().path, VictoryPath::CulturalLegacy);
+        let year = game.year;
+        game.advance_turn();
+        assert_eq!(game.year, year);
+    }
+
+    #[test]
+    fn losing_the_capital_causes_defeat() {
+        let mut game = GameState::new(2032);
+        let capital = game.factions[PLAYER_ID].capital;
+        game.world.get_mut(capital).unwrap().owner = Some(1);
+        assert!(game.check_campaign_end());
+        assert!(game.defeat_reason.is_some());
+        assert!(game.is_ended());
     }
 
     #[test]

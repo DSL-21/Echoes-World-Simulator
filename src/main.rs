@@ -860,6 +860,16 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
         return;
     }
     let game = &mut session.0;
+    if input.just_pressed(KeyCode::F5) {
+        match persistence::save_game(game, SAVE_PATH) {
+            Ok(()) => game.add_log("Campaign saved to echoes_save.json."),
+            Err(error) => game.add_log(format!("SAVE ERROR — {error}")),
+        }
+        return;
+    }
+    if game.is_ended() {
+        return;
+    }
     if input.just_pressed(KeyCode::Space) {
         game.advance_turn();
     }
@@ -938,12 +948,6 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
             game.add_log("Select a foreign province to negotiate peace.");
         }
     }
-    if input.just_pressed(KeyCode::F5) {
-        match persistence::save_game(game, SAVE_PATH) {
-            Ok(()) => game.add_log("Campaign saved to echoes_save.json."),
-            Err(error) => game.add_log(format!("SAVE ERROR — {error}")),
-        }
-    }
 }
 
 fn selected_foreign_owner(game: &GameState) -> Option<usize> {
@@ -969,6 +973,9 @@ fn handle_ui_activate(
         return;
     }
     let game = &mut session.0;
+    if game.is_ended() && !matches!(*action, UiAction::Save) {
+        return;
+    }
     match *action {
         UiAction::EndTurn => game.advance_turn(),
         UiAction::Claim => {
@@ -1154,10 +1161,20 @@ fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
     let target = selected_foreign_owner(game);
     for (mut text, line) in &mut labels {
         **text = match line {
-            HudLine::Header => format!(
-                "THE LIVING WORLD  •  YEAR {}  •  TURN {}",
-                game.year, game.turn
-            ),
+            HudLine::Header => {
+                if let Some(outcome) = &game.outcome {
+                    format!(
+                        "CAMPAIGN VICTORY — {} achieves {} in year {}",
+                        game.faction_name(Some(outcome.winner_id)),
+                        outcome.path.name(),
+                        outcome.year
+                    )
+                } else if game.defeat_reason.is_some() {
+                    format!("CAMPAIGN DEFEAT — THE CAPITAL HAS FALLEN — YEAR {}", game.year)
+                } else {
+                    format!("THE LIVING WORLD  •  YEAR {}  •  TURN {}", game.year, game.turn)
+                }
+            },
             HudLine::Resources => format!(
                 "FOOD {:>5.0}   TIMBER {:>5.0}   STONE {:>5.0}\nIRON {:>5.0}   GOLD {:>5.0}   SCIENCE {:>5.0}   INFLUENCE {:>5.0}",
                 player.resources.food,
