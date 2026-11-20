@@ -1666,6 +1666,8 @@ mod tests {
         game.world.get_mut(sea).unwrap().terrain = Terrain::Ocean;
         game.selected = port;
         assert!(game.recruit_army(UnitClass::Infantry));
+        // The initial treasury has 12 iron; recruitment consumes 8 and a fleet needs 8.
+        game.factions[PLAYER_ID].resources.iron += 8.0;
         assert!(game.build_naval_fleet());
         assert!(game.embark_nearest_army());
         let army_id = game.armies[0].id;
