@@ -128,32 +128,91 @@ fn simulate_diplomacy(game: &mut GameState) {
             game.relations[b][a].opinion = opinion;
 
             match treaty {
-                Treaty::None if game.turn % 12 == 0 && opinion >= 18 => {
+                Treaty::None if game.turn % 12 == 0 && trade_proposal_accepted(game, a, b, opinion) => {
                     set_symmetric(&mut game.relations, a, b, Treaty::TradeAgreement, game.turn);
                     let first = game.factions[a].name.clone();
                     let second = game.factions[b].name.clone();
-                    game.add_log(format!("{first} and {second} sign a trade agreement."));
+                    game.add_log(format!("DIPLOMACY — {first} proposes a commercial treaty; {second} accepts the trade agreement."));
                 }
-                Treaty::None if game.turn % 12 == 0 && opinion <= -48
-                    && game.army_count(a) > 0 && game.army_count(b) > 0 => {
+                Treaty::None if game.turn % 12 == 0 && war_proposal_accepted(game, a, b, opinion) => {
                     set_symmetric(&mut game.relations, a, b, Treaty::War, game.turn);
                     let first = game.factions[a].name.clone();
                     let second = game.factions[b].name.clone();
-                    game.add_log(format!("WAR — border tensions erupt into open conflict between {first} and {second}."));
+                    game.add_log(format!("WAR — diplomatic negotiations collapse and {first} declares war on {second}."));
                 }
-                Treaty::TradeAgreement if game.turn % 12 == 0 && opinion >= 48 => {
+                Treaty::TradeAgreement if game.turn % 12 == 0 && alliance_proposal_accepted(game, a, b, opinion) => {
                     set_symmetric(&mut game.relations, a, b, Treaty::Alliance, game.turn);
                     let first = game.factions[a].name.clone();
                     let second = game.factions[b].name.clone();
-                    game.add_log(format!("{first} and {second} formalize their friendship in an alliance."));
+                    game.add_log(format!("ALLIANCE — {first} proposes a defensive pact and {second} accepts."));
                 }
                 Treaty::Truce if game.turn.saturating_sub(changed_turn) >= 24 && opinion >= 5 => {
                     set_symmetric(&mut game.relations, a, b, Treaty::None, game.turn);
+                    let first = game.factions[a].name.clone();
+                    let second = game.factions[b].name.clone();
+                    game.add_log(format!("The truce between {first} and {second} expires; normal relations resume."));
                 }
                 _ => {}
             }
         }
     }
+}
+
+fn trade_proposal_accepted(game: &GameState, a: usize, b: usize, opinion: i16) -> bool {
+    if opinion < 18 {
+        return false;
+    }
+    let first = &game.factions[a];
+    let second = &game.factions[b];
+    let personality_bonus = [first.personality, second.personality]
+        .into_iter()
+        .map(|personality| match personality {
+            AiPersonality::Merchant => 12,
+            AiPersonality::Scholar => 5,
+            AiPersonality::Expansionist => -5,
+            AiPersonality::Balanced | AiPersonality::Defender => 0,
+        })
+        .sum::<i16>();
+    let economic_need = if first.resources.gold < 35.0 || second.resources.gold < 35.0 {
+        8
+    } else {
+        0
+    };
+    opinion + personality_bonus + economic_need >= 30
+}
+
+fn alliance_proposal_accepted(game: &GameState, a: usize, b: usize, opinion: i16) -> bool {
+    if opinion < 48 {
+        return false;
+    }
+    let shared_enemy = (0..game.factions.len()).any(|other| {
+        other != a
+            && other != b
+            && game.treaty_between(a, other) == Treaty::War
+            && game.treaty_between(b, other) == Treaty::War
+    });
+    let defensive_pair = game.factions[a].personality == AiPersonality::Defender
+        && game.factions[b].personality == AiPersonality::Defender;
+    opinion >= 68 || shared_enemy || defensive_pair
+}
+
+fn war_proposal_accepted(game: &GameState, a: usize, b: usize, opinion: i16) -> bool {
+    if opinion > -48 || game.army_count(a) == 0 || game.army_count(b) == 0 {
+        return false;
+    }
+    let expansionist = game.factions[a].personality == AiPersonality::Expansionist
+        || game.factions[b].personality == AiPersonality::Expansionist;
+    let border_pressure = shares_border(game, a, b);
+    let army_power = |owner: usize| {
+        game.armies.iter()
+            .filter(|army| army.owner == owner)
+            .map(|army| army.combat_power())
+            .sum::<f32>()
+    };
+    let power_a = army_power(a);
+    let power_b = army_power(b);
+    let prepared = power_a.max(power_b) >= power_a.min(power_b) * 0.75;
+    border_pressure && prepared && (expansionist || opinion <= -70)
 }
 
 fn shares_border(game: &GameState, a: usize, b: usize) -> bool {
