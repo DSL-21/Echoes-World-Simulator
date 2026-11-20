@@ -976,7 +976,7 @@ fn spawn_hud(commands: &mut Commands) {
                             ))
                             .with_children(|b| {
                                 b.spawn((
-                                    Text::new("PORT  [COAST]"),
+                                    Text::new("PORT  [0]"),
                                     TextFont::from_font_size(11.0),
                                     TextColor(Color::WHITE),
                                 ));
@@ -1445,6 +1445,9 @@ fn handle_keyboard(
     }
     if input.just_pressed(KeyCode::Digit9) {
         game.build_selected(Building::Road);
+    }
+    if input.just_pressed(KeyCode::Digit0) {
+        game.build_selected(Building::Port);
     }
     if input.just_pressed(KeyCode::KeyB) {
         game.found_city();
