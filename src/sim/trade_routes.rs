@@ -5,9 +5,16 @@ use serde::{Deserialize, Serialize};
 use super::{
     diplomacy::Treaty,
     market::Commodity,
-    world::Coord,
+    world::{Coord, Terrain},
     GameState,
 };
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TradeRouteType {
+    #[default]
+    Land,
+    Maritime,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TradeRoute {
@@ -17,6 +24,8 @@ pub struct TradeRoute {
     pub origin: Coord,
     pub destination: Coord,
     pub commodity: Commodity,
+    #[serde(default)]
+    pub route_type: TradeRouteType,
     pub path: Vec<Coord>,
     pub capacity: f32,
     pub active: bool,
@@ -69,6 +78,56 @@ pub fn find_land_route(
     None
 }
 
+pub fn find_maritime_route(
+    game: &GameState,
+    owner: usize,
+    partner: usize,
+    origin: Coord,
+    destination: Coord,
+) -> Option<Vec<Coord>> {
+    use super::economy::Building;
+
+    if owner == partner || game.world.get(origin).is_none() || game.world.get(destination).is_none() {
+        return None;
+    }
+    let has_port = |coord: Coord, faction: usize| {
+        game.world.get(coord).is_some_and(|tile| {
+            tile.owner == Some(faction)
+                && tile.city.is_some()
+                && tile.buildings.contains(&Building::Port)
+                && tile.terrain == Terrain::Coast
+        })
+    };
+    if !has_port(origin, owner) || !has_port(destination, partner) {
+        return None;
+    }
+
+    let mut queue = VecDeque::from([origin]);
+    let mut visited = HashSet::from([origin]);
+    let mut parents: HashMap<Coord, Coord> = HashMap::new();
+    while let Some(current) = queue.pop_front() {
+        if current == destination {
+            let mut path = vec![destination];
+            let mut cursor = destination;
+            while cursor != origin {
+                cursor = *parents.get(&cursor)?;
+                path.push(cursor);
+            }
+            path.reverse();
+            return Some(path);
+        }
+        for next in game.world.neighbors(current) {
+            if !visited.insert(next) { continue; }
+            let Some(tile) = game.world.get(next) else { continue; };
+            if next != destination && !matches!(tile.terrain, Terrain::Ocean | Terrain::Coast) { continue; }
+            if next != destination && tile.owner.is_some_and(|realm| realm != owner && realm != partner) { continue; }
+            parents.insert(next, current);
+            queue.push_back(next);
+        }
+    }
+    None
+}
+
 pub fn route_is_open(game: &GameState, route: &TradeRoute) -> bool {
     if route.owner >= game.factions.len()
         || route.partner >= game.factions.len()
@@ -88,25 +147,20 @@ pub fn route_is_open(game: &GameState, route: &TradeRoute) -> bool {
     }
 
     for (index, coord) in route.path.iter().enumerate() {
-        let Some(tile) = game.world.get(*coord) else {
-            return false;
+        let Some(tile) = game.world.get(*coord) else { return false; };
+        let terrain_valid = match route.route_type {
+            TradeRouteType::Land => tile.terrain.is_land(),
+            TradeRouteType::Maritime => matches!(tile.terrain, Terrain::Ocean | Terrain::Coast),
         };
-        if !tile.terrain.is_land()
-            || tile.owner.is_some_and(|realm| realm != route.owner && realm != route.partner)
-        {
-            return false;
-        }
-        if index > 0 && route.path[index - 1].manhattan(*coord) != 1 {
-            return false;
-        }
+        if !terrain_valid || tile.owner.is_some_and(|realm| realm != route.owner && realm != route.partner) { return false; }
+        if index > 0 && route.path[index - 1].manhattan(*coord) != 1 { return false; }
     }
 
-    game.world
-        .get(route.origin)
-        .is_some_and(|tile| tile.city.is_some() && tile.owner == Some(route.owner))
-        && game.world.get(route.destination).is_some_and(|tile| {
-            tile.city.is_some() && tile.owner == Some(route.partner)
-        })
+    let has_city = |coord: Coord, owner: usize| game.world.get(coord).is_some_and(|tile| {
+        tile.city.is_some() && tile.owner == Some(owner)
+            && (route.route_type == TradeRouteType::Land || (tile.terrain == Terrain::Coast && tile.buildings.contains(&super::economy::Building::Port)))
+    });
+    has_city(route.origin, route.owner) && has_city(route.destination, route.partner)
 }
 
 pub fn route_capacity(game: &GameState, path: &[Coord]) -> f32 {
@@ -165,6 +219,7 @@ mod tests {
             origin,
             destination,
             commodity: Commodity::Food,
+            route_type: TradeRouteType::Land,
             capacity: 4.0,
             path,
             active: true,
