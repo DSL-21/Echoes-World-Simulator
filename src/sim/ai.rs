@@ -483,6 +483,18 @@ fn process_naval_warfare(game: &mut GameState) {
                 game.add_log(format!("{realm} lands {landed} army unit(s) on a hostile coastline."));
             }
         } else if let Some(step) = first_step {
+            let own_power = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
+                .map(|fleet| fleet.combat_power()).unwrap_or(0.0);
+            let hostile_power = game.naval_fleets.iter()
+                .filter(|fleet| fleet.owner != owner && fleet.position == step
+                    && enemies.contains(&fleet.owner))
+                .map(|fleet| fleet.combat_power())
+                .sum::<f32>();
+            // Do not send a transport into a clearly superior hostile fleet.
+            // The AI can still contest near-equal engagements and win by attrition.
+            if hostile_power > own_power * 1.25 {
+                continue;
+            }
             game.move_naval_fleet_for_owner(owner, fleet_id, step);
         }
     }
@@ -687,6 +699,41 @@ mod tests {
         assert!(game.armies.iter().any(|army| {
             army.owner == 1 && army.position == landing && army.embarked_in.is_none()
         }));
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn ai_holds_transport_when_enemy_navy_is_overwhelming() {
+        let mut game = GameState::new(2045);
+        let port = game.factions[1].capital;
+        let sea = Coord::new(port.x - 1, port.y);
+        let landing = Coord::new(port.x - 2, port.y);
+        let enemy_land = Coord::new(port.x - 3, port.y);
+        game.world.get_mut(port).unwrap().terrain = Terrain::Coast;
+        game.world.get_mut(port).unwrap().buildings.push(Building::Port);
+        game.world.get_mut(sea).unwrap().terrain = Terrain::Ocean;
+        game.world.get_mut(landing).unwrap().terrain = Terrain::Coast;
+        game.world.get_mut(landing).unwrap().owner = None;
+        game.world.get_mut(enemy_land).unwrap().terrain = Terrain::Grassland;
+        game.world.get_mut(enemy_land).unwrap().owner = Some(PLAYER_ID);
+
+        game.armies.push(Army::new(1, 1, port, UnitClass::Infantry));
+        game.next_army_id = 2;
+        let mut transport = NavalFleet::new(1, 1, port);
+        game.naval_fleets.push(transport.clone());
+        let mut hostile = NavalFleet::new(2, PLAYER_ID, sea);
+        hostile.strength = 100.0;
+        game.naval_fleets.push(hostile);
+        game.next_naval_fleet_id = 3;
+        set_symmetric(&mut game.relations, 1, PLAYER_ID, Treaty::War, game.turn);
+
+        // First turn embarks; second turn detects the stronger hostile fleet and holds.
+        process_naval_warfare(&mut game);
+        process_naval_warfare(&mut game);
+
+        transport = game.naval_fleets.iter().find(|fleet| fleet.id == 1).unwrap().clone();
+        assert_eq!(transport.position, port);
+        assert!(game.armies.iter().any(|army| army.embarked_in == Some(1)));
         assert!(game.validate().is_ok());
     }
 
