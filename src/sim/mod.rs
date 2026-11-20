@@ -25,9 +25,9 @@ use self::{
     military::{Army, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
-    trade_routes::{find_land_route, reserve_stock, route_capacity, route_is_open, TradeRoute},
+    trade_routes::{find_land_route, find_maritime_route, reserve_stock, route_capacity, route_is_open, TradeRoute, TradeRouteType},
     victory::{CampaignOutcome, VictoryPath},
-    world::{Coord, WorldMap},
+    world::{Coord, Terrain, WorldMap},
 };
 
 pub const PLAYER_ID: usize = 0;
@@ -363,9 +363,26 @@ impl GameState {
         }
 
         let origin = self.factions[PLAYER_ID].capital;
-        let Some(path) = find_land_route(self, PLAYER_ID, partner, origin, destination) else {
-            self.add_log("No safe land corridor connects the capital to that city. A maritime route is not yet available.");
-            return false;
+        let land_path = find_land_route(self, PLAYER_ID, partner, origin, destination);
+        let (origin, path, route_type) = if let Some(path) = land_path {
+            (origin, path, TradeRouteType::Land)
+        } else {
+            let port_origin = self.world.coords().into_iter().find(|coord| {
+                self.world.get(*coord).is_some_and(|tile| {
+                    tile.owner == Some(PLAYER_ID) && tile.city.is_some()
+                        && tile.buildings.contains(&Building::Port)
+                        && tile.terrain == Terrain::Coast
+                })
+            });
+            let Some(port_origin) = port_origin else {
+                self.add_log("No land corridor exists. Build a Port in a coastal city to establish maritime trade.");
+                return false;
+            };
+            let Some(path) = find_maritime_route(self, PLAYER_ID, partner, port_origin, destination) else {
+                self.add_log("No navigable sea lane connects two cities with operational ports.");
+                return false;
+            };
+            (port_origin, path, TradeRouteType::Maritime)
         };
         let cost = Resources { gold: 24.0, timber: 10.0, stone: 5.0, ..Default::default() };
         if !self.factions[PLAYER_ID].resources.pay(&cost) {
@@ -377,7 +394,7 @@ impl GameState {
         let id = self.next_trade_route_id;
         self.next_trade_route_id += 1;
         self.trade_routes.push(TradeRoute {
-            id, owner: PLAYER_ID, partner, origin, destination, commodity, path, capacity,
+            id, owner: PLAYER_ID, partner, origin, destination, commodity, route_type, path, capacity,
             active: true, last_trade_turn: 0,
         });
         let partner_name = self.factions[partner].name.clone();
@@ -387,8 +404,8 @@ impl GameState {
             .and_then(|tile| tile.city.clone())
             .unwrap_or_else(|| "foreign city".to_owned());
         self.add_log(format!(
-            "TRADE ROUTE CHARTERED — a {} convoy now links the capital with {city_name} in {partner_name}.",
-            commodity.name()
+            "TRADE ROUTE CHARTERED — a {} {} convoy now links {city_name} in {partner_name}.",
+            if route_type == TradeRouteType::Maritime { "maritime" } else { "land" }, commodity.name()
         ));
         true
     }
@@ -481,10 +498,10 @@ impl GameState {
             );
             return false;
         }
-        if tile.city.is_some() && building != Building::Road {
+        if tile.city.is_some() && !matches!(building, Building::Road | Building::Port) {
             Self::push_chronicle(
                 &mut self.chronicle,
-                "Urban administration occupies this province. Only roads can be built in a city.",
+                "Urban administration occupies this province. Only roads and ports can be built in a city.",
             );
             return false;
         }
