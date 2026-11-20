@@ -6,10 +6,11 @@ pub mod market;
 pub mod military;
 pub mod society;
 pub mod technology;
+pub mod trade_routes;
 pub mod victory;
 pub mod world;
 
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +22,7 @@ use self::{
     military::{Army, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
+    trade_routes::{find_land_route, reserve_stock, route_capacity, route_is_open, TradeRoute},
     victory::{CampaignOutcome, VictoryPath},
     world::{Coord, WorldMap},
 };
@@ -132,6 +134,14 @@ pub struct GameState {
     pub outcome: Option<CampaignOutcome>,
     #[serde(default)]
     pub defeat_reason: Option<String>,
+    #[serde(default)]
+    pub trade_routes: Vec<TradeRoute>,
+    #[serde(default = "default_next_trade_route_id")]
+    pub next_trade_route_id: u64,
+}
+
+fn default_next_trade_route_id() -> u64 {
+    1
 }
 
 impl GameState {
@@ -203,6 +213,8 @@ impl GameState {
             chronicle: VecDeque::new(),
             outcome: None,
             defeat_reason: None,
+            trade_routes: Vec::new(),
+            next_trade_route_id: 1,
         };
         game.add_log("The age of realms begins. Five powers rise across an uncharted world.");
         game.add_log(
@@ -320,6 +332,64 @@ impl GameState {
             .filter(|army| army.owner == faction_id)
             .count()
     }
+
+    pub fn trade_route_count(&self, faction_id: usize) -> usize {
+        self.trade_routes.iter().filter(|route| route.owner == faction_id).count()
+    }
+
+    pub fn establish_trade_route(&mut self, destination: Coord, commodity: Commodity) -> bool {
+        let Some(destination_tile) = self.world.get(destination) else { return false; };
+        let Some(partner) = destination_tile.owner else {
+            self.add_log("A trade route must terminate in a city belonging to another realm.");
+            return false;
+        };
+        if partner == PLAYER_ID || destination_tile.city.is_none() {
+            self.add_log("Select a foreign city to establish an international trade route.");
+            return false;
+        }
+        if !matches!(self.treaty_between(PLAYER_ID, partner), Treaty::TradeAgreement | Treaty::Alliance) {
+            self.add_log("An international trade route requires a trade agreement or alliance.");
+            return false;
+        }
+        if self.trade_routes.iter().any(|route| {
+            route.owner == PLAYER_ID && route.partner == partner
+                && route.destination == destination && route.commodity == commodity
+        }) {
+            self.add_log("A route for this commodity already serves that city.");
+            return false;
+        }
+
+        let origin = self.factions[PLAYER_ID].capital;
+        let Some(path) = find_land_route(self, PLAYER_ID, partner, origin, destination) else {
+            self.add_log("No safe land corridor connects the capital to that city. A maritime route is not yet available.");
+            return false;
+        };
+        let cost = Resources { gold: 24.0, timber: 10.0, stone: 5.0, ..Default::default() };
+        if !self.factions[PLAYER_ID].resources.pay(&cost) {
+            self.add_log("Chartering a trade route requires 24 gold, 10 timber and 5 stone.");
+            return false;
+        }
+
+        let capacity = route_capacity(self, &path);
+        let id = self.next_trade_route_id;
+        self.next_trade_route_id += 1;
+        self.trade_routes.push(TradeRoute {
+            id, owner: PLAYER_ID, partner, origin, destination, commodity, path, capacity,
+            active: true, last_trade_turn: 0,
+        });
+        let partner_name = self.factions[partner].name.clone();
+        let city_name = self
+            .world
+            .get(destination)
+            .and_then(|tile| tile.city.clone())
+            .unwrap_or_else(|| "foreign city".to_owned());
+        self.add_log(format!(
+            "TRADE ROUTE CHARTERED — a {} convoy now links the capital with {city_name} in {partner_name}.",
+            commodity.name()
+        ));
+        true
+    }
+
 
     pub fn faction_name(&self, faction_id: Option<usize>) -> &str {
         faction_id
@@ -957,6 +1027,7 @@ impl GameState {
 
         self.progress_research();
         self.update_trade_income();
+        self.process_trade_routes();
         self.process_ai_turns();
         ai::process_turn(self);
         self.update_army_supply();
@@ -1079,6 +1150,51 @@ impl GameState {
         }
 
         self.market.update(supply, demand);
+    }
+
+    fn process_trade_routes(&mut self) {
+        let routes = self.trade_routes.clone();
+        for route in routes {
+            let open = route_is_open(self, &route);
+            if let Some(stored) = self.trade_routes.iter_mut().find(|item| item.id == route.id) {
+                stored.active = open;
+            }
+            if !open { continue; }
+
+            let owner = route.owner;
+            let partner = route.partner;
+            let price = route.commodity.price(&self.market);
+            let reserve = reserve_stock(route.commodity, self.factions[owner].population);
+            let available = (route.commodity.stock(&self.factions[owner].resources) - reserve).max(0.0);
+            let purchase_price = price * 1.08;
+            let amount = route.capacity.min(available)
+                .min(self.factions[partner].resources.gold / purchase_price);
+            if amount < 0.1 { continue; }
+
+            if !self.factions[owner].resources.pay(&route.commodity.cost(amount)) { continue; }
+            let partner_payment = amount * purchase_price;
+            let owner_revenue = amount * price * 0.92;
+            self.factions[partner].resources.gold =
+                (self.factions[partner].resources.gold - partner_payment).max(0.0);
+            route.commodity.add_to(&mut self.factions[partner].resources, amount);
+            self.factions[owner].resources.gold += owner_revenue;
+
+            if self.turn % 4 == 0 {
+                let opinion = (self.relations[owner][partner].opinion + 1).min(100);
+                self.relations[owner][partner].opinion = opinion;
+                self.relations[partner][owner].opinion = opinion;
+            }
+            if let Some(stored) = self.trade_routes.iter_mut().find(|item| item.id == route.id) {
+                stored.last_trade_turn = self.turn;
+            }
+            if route.last_trade_turn == 0 || self.turn % 4 == 0 {
+                let partner_name = self.factions[partner].name.clone();
+                self.add_log(format!(
+                    "TRADE CONVOY — delivered {amount:.1} units of {} to {partner_name}; the treasury earns {:.1} gold.",
+                    route.commodity.name(), owner_revenue
+                ));
+            }
+        }
     }
 
     fn update_trade_income(&mut self) {
@@ -1259,6 +1375,24 @@ impl GameState {
         if self.outcome.as_ref().is_some_and(|outcome| outcome.winner_id >= self.factions.len()) {
             return Err("The save references a winning faction that does not exist.".to_owned());
         }
+        let mut route_ids = HashSet::new();
+        for route in &self.trade_routes {
+            if route.owner >= self.factions.len()
+                || route.partner >= self.factions.len()
+                || route.owner == route.partner
+                || !route_ids.insert(route.id)
+                || route.path.len() < 2
+                || route.path.first() != Some(&route.origin)
+                || route.path.last() != Some(&route.destination)
+            {
+                return Err("A trade route contains invalid realm, identity or endpoint data.".to_owned());
+            }
+            if route.path.windows(2).any(|pair| pair[0].manhattan(pair[1]) != 1)
+                || route.path.iter().any(|coord| self.world.get(*coord).is_none())
+            {
+                return Err("A trade route contains an invalid land path.".to_owned());
+            }
+        }
         if self.outcome.is_some() && self.defeat_reason.is_some() {
             return Err("The campaign cannot be both won and lost.".to_owned());
         }
@@ -1269,6 +1403,48 @@ impl GameState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn international_trade_route_moves_cargo_and_pays_the_exporter() {
+        let mut game = GameState::new(2033);
+        let origin = game.factions[PLAYER_ID].capital;
+        let destination = game.world.neighbors(origin)[0];
+        let tile = game.world.get_mut(destination).unwrap();
+        tile.terrain = world::Terrain::Grassland;
+        tile.owner = Some(1);
+        tile.city = Some("Trade Gate".to_owned());
+        tile.population = 3;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::TradeAgreement, game.turn);
+
+        assert!(game.establish_trade_route(destination, Commodity::Food));
+        let player_food_before = game.factions[PLAYER_ID].resources.food;
+        let partner_food_before = game.factions[1].resources.food;
+        let player_gold_before = game.factions[PLAYER_ID].resources.gold;
+        game.process_trade_routes();
+
+        assert!(game.factions[PLAYER_ID].resources.food < player_food_before);
+        assert!(game.factions[1].resources.food > partner_food_before);
+        assert!(game.factions[PLAYER_ID].resources.gold > player_gold_before);
+        assert!(game.trade_routes[0].active);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn trade_routes_pause_when_the_treaty_is_broken() {
+        let mut game = GameState::new(2034);
+        let origin = game.factions[PLAYER_ID].capital;
+        let destination = game.world.neighbors(origin)[0];
+        let tile = game.world.get_mut(destination).unwrap();
+        tile.terrain = world::Terrain::Grassland;
+        tile.owner = Some(1);
+        tile.city = Some("Border Exchange".to_owned());
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::TradeAgreement, game.turn);
+        assert!(game.establish_trade_route(destination, Commodity::Timber));
+
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn + 1);
+        game.process_trade_routes();
+        assert!(!game.trade_routes[0].active);
+    }
 
     #[test]
     fn campaign_starts_with_five_realms_and_capitals() {

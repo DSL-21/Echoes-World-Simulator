@@ -149,6 +149,10 @@ enum UiAction {
     Trade,
     War,
     Peace,
+    TradeRouteFood,
+    TradeRouteTimber,
+    TradeRouteStone,
+    TradeRouteIron,
     MoveArmy,
     Save,
     Load,
@@ -601,6 +605,59 @@ fn spawn_hud(commands: &mut Commands) {
                 TextColor(Color::srgb(0.65, 0.75, 0.79)),
                 HudLine::Politics,
             ));
+            parent.spawn((
+                Text::new("CHART INTERNATIONAL ROUTE"),
+                TextFont::from_font_size(11.5),
+                TextColor(Color::srgb(0.91, 0.83, 0.61)),
+            ));
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::TradeRouteFood,
+                    Node { width: px(160), height: px(28), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                    BackgroundColor(Color::srgb(0.18, 0.34, 0.35)),
+                )).with_children(|button| {
+                    button.spawn((Text::new("FOOD  [Y]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::TradeRouteTimber,
+                    Node { width: px(160), height: px(28), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                    BackgroundColor(Color::srgb(0.18, 0.32, 0.27)),
+                )).with_children(|button| {
+                    button.spawn((Text::new("TIMBER  [H]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::TradeRouteStone,
+                    Node { width: px(160), height: px(28), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                    BackgroundColor(Color::srgb(0.29, 0.31, 0.34)),
+                )).with_children(|button| {
+                    button.spawn((Text::new("STONE  [N]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::TradeRouteIron,
+                    Node { width: px(160), height: px(28), justify_content: JustifyContent::Center, align_items: AlignItems::Center, ..default() },
+                    BackgroundColor(Color::srgb(0.35, 0.27, 0.25)),
+                )).with_children(|button| {
+                    button.spawn((Text::new("IRON  [U]"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
             parent.spawn((
                 Text::new("ORDERS"),
                 TextFont::from_font_size(14.0),
@@ -1359,6 +1416,18 @@ fn handle_keyboard(
             game.add_log("Select a province belonging to another realm before negotiating.");
         }
     }
+    if input.just_pressed(KeyCode::KeyY) {
+        game.establish_trade_route(game.selected, Commodity::Food);
+    }
+    if input.just_pressed(KeyCode::KeyH) {
+        game.establish_trade_route(game.selected, Commodity::Timber);
+    }
+    if input.just_pressed(KeyCode::KeyN) {
+        game.establish_trade_route(game.selected, Commodity::Stone);
+    }
+    if input.just_pressed(KeyCode::KeyU) {
+        game.establish_trade_route(game.selected, Commodity::Iron);
+    }
     if input.just_pressed(KeyCode::KeyX) {
         if let Some(target) = selected_foreign_owner(game) {
             game.declare_war(target);
@@ -1470,6 +1539,18 @@ fn handle_ui_activate(
             } else {
                 game.add_log("Select a foreign province before proposing a trade agreement.");
             }
+        }
+        UiAction::TradeRouteFood => {
+            game.establish_trade_route(game.selected, Commodity::Food);
+        }
+        UiAction::TradeRouteTimber => {
+            game.establish_trade_route(game.selected, Commodity::Timber);
+        }
+        UiAction::TradeRouteStone => {
+            game.establish_trade_route(game.selected, Commodity::Stone);
+        }
+        UiAction::TradeRouteIron => {
+            game.establish_trade_route(game.selected, Commodity::Iron);
         }
         UiAction::War => {
             if let Some(target) = selected_foreign_owner(game) {
@@ -1698,6 +1779,10 @@ fn update_hud(
     let game = &session.0;
     let player = &game.factions[PLAYER_ID];
     let target = selected_foreign_owner(game);
+    let active_routes = game.trade_routes.iter()
+        .filter(|route| route.owner == PLAYER_ID && route.active)
+        .count();
+    let total_routes = game.trade_route_count(PLAYER_ID);
     for (mut text, line) in &mut labels {
         **text = match line {
             HudLine::MapLayer => format!("MAP LAYER: {}  •  {}", map_view.layer.name().to_uppercase(), map_view.layer.hint()),
@@ -1777,13 +1862,17 @@ fn update_hud(
                 if let Some(target) = target {
                     let relation = &game.relations[PLAYER_ID][target];
                     format!(
-                        "Target: {}\nStatus: {}  •  Opinion: {}\n[T] trade  [X] war  [P] peace",
+                        "Target: {}\nStatus: {}  •  Opinion: {}\nTrade routes: {}/{} active\n[T] trade  [Y] food route  [X] war  [P] peace",
                         game.factions[target].name,
                         relation.treaty.label(),
-                        relation.opinion
+                        relation.opinion,
+                        active_routes,
+                        total_routes
                     )
                 } else {
-                    "Select a foreign province to inspect relations and negotiate.".to_owned()
+                    format!(
+                        "Select a foreign city to establish a route.\nTrade routes: {active_routes}/{total_routes} active."
+                    )
                 }
             }
             HudLine::Chronicle => {

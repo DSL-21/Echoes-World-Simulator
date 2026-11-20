@@ -2,6 +2,9 @@
 
 ## 0.2.0-dev — Simulation foundation
 
+- Added international land trade routes for food, timber, stone and iron with treaty checks, partner payments, stock reserves and road-enhanced capacity.
+- Added route suspension when diplomatic access or the safe land corridor is lost.
+
 - Added five strategic map layers: terrain, political ownership, population, resource potential and infrastructure.
 - Added procedural rivers that wind from mountain regions to the coast.
 - Added buildable roads, with reduced army supply loss and stronger defensive positions.

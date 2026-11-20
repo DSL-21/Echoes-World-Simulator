@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{cmp::Reverse, collections::{BinaryHeap, HashMap, HashSet, VecDeque}};
 
 use super::{
     diplomacy::{set_symmetric, Treaty},
@@ -171,6 +171,10 @@ fn shares_border(game: &GameState, a: usize, b: usize) -> bool {
 
 /// Finds the first legal land step from an army's current position to a selected province.
 /// Neutral and friendly land is traversable; hostile territory is only traversable during war.
+/// Finds a least-cost land route and returns its first step.
+///
+/// Roads reduce movement cost, while difficult terrain and unbridged rivers increase it.
+/// Enemy provinces can only be crossed when the owner is at war with that realm.
 pub fn next_step_toward_destination(
     game: &GameState,
     owner: usize,
@@ -181,40 +185,75 @@ pub fn next_step_toward_destination(
         return None;
     }
 
-    let mut queue = VecDeque::from([start]);
-    let mut visited = HashSet::from([start]);
-    let mut first_step: HashMap<Coord, Coord> = HashMap::new();
+    let start_index = game.world.index(start)?;
+    let destination_index = game.world.index(destination)?;
+    let width = game.world.width as usize;
+    let mut costs = vec![u32::MAX; game.world.tiles.len()];
+    let mut first_steps: Vec<Option<Coord>> = vec![None; game.world.tiles.len()];
+    let mut queue = BinaryHeap::new();
 
-    while let Some(current) = queue.pop_front() {
+    costs[start_index] = 0;
+    queue.push(Reverse((0_u32, start_index)));
+
+    while let Some(Reverse((current_cost, current_index))) = queue.pop() {
+        if current_cost != costs[current_index] {
+            continue;
+        }
+        if current_index == destination_index {
+            return first_steps[destination_index];
+        }
+
+        let current = Coord::new(
+            (current_index % width) as i32,
+            (current_index / width) as i32,
+        );
         for next in game.world.neighbors(current) {
-            if !visited.insert(next) {
-                continue;
-            }
-            let Some(tile) = game.world.get(next) else {
+            let Some(step_cost) = province_movement_cost(game, owner, next) else {
                 continue;
             };
-            if !tile.terrain.is_land() {
+            let Some(next_index) = game.world.index(next) else {
                 continue;
-            }
-            if tile.owner.is_some_and(|other| {
-                other != owner && game.treaty_between(owner, other) != Treaty::War
-            }) {
+            };
+            let next_cost = current_cost.saturating_add(step_cost);
+            if next_cost >= costs[next_index] {
                 continue;
             }
 
-            let step = if current == start {
-                next
+            costs[next_index] = next_cost;
+            first_steps[next_index] = if current_index == start_index {
+                Some(next)
             } else {
-                *first_step.get(&current)?
+                first_steps[current_index]
             };
-            if next == destination {
-                return Some(step);
-            }
-            first_step.insert(next, step);
-            queue.push_back(next);
+            queue.push(Reverse((next_cost, next_index)));
         }
     }
     None
+}
+
+fn province_movement_cost(game: &GameState, owner: usize, coord: Coord) -> Option<u32> {
+    let tile = game.world.get(coord)?;
+    if !tile.terrain.is_land() {
+        return None;
+    }
+    if tile.owner.is_some_and(|other| {
+        other != owner && game.treaty_between(owner, other) != Treaty::War
+    }) {
+        return None;
+    }
+
+    let terrain_cost = match tile.terrain {
+        super::world::Terrain::Ocean => return None,
+        super::world::Terrain::Coast => 1,
+        super::world::Terrain::Grassland | super::world::Terrain::Plains => 0,
+        super::world::Terrain::Forest | super::world::Terrain::Desert => 2,
+        super::world::Terrain::Tundra => 3,
+        super::world::Terrain::Mountain => 5,
+    };
+    let has_road = tile.buildings.contains(&Building::Road);
+    let river_cost = if tile.river && !has_road { 4 } else { 0 };
+    let raw_cost: u32 = 10 + terrain_cost + river_cost;
+    Some(if has_road { raw_cost.saturating_sub(7).max(2) } else { raw_cost })
 }
 
 fn issue_war_orders(game: &mut GameState) {
@@ -258,6 +297,22 @@ fn next_step_toward_enemy(game: &GameState, army: &Army) -> Option<Coord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn roads_reduce_army_path_cost_on_land_provinces() {
+        let mut game = GameState::new(2030);
+        let coord = game.world.coords().into_iter().find(|coord| {
+            game.world.get(*coord).is_some_and(|tile| {
+                tile.terrain.is_land()
+                    && tile.owner.is_none_or(|owner| owner == PLAYER_ID)
+                    && !tile.buildings.contains(&Building::Road)
+            })
+        }).expect("generated map contains land");
+        let without_road = province_movement_cost(&game, PLAYER_ID, coord).unwrap();
+        game.world.get_mut(coord).unwrap().buildings.push(Building::Road);
+        let with_road = province_movement_cost(&game, PLAYER_ID, coord).unwrap();
+        assert!(with_road < without_road);
+    }
 
     #[test]
     fn player_destination_orders_find_a_legal_first_step() {
