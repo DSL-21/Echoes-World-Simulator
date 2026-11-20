@@ -1243,6 +1243,7 @@ impl GameState {
         self.process_trade_routes();
         self.process_ai_turns();
         ai::process_turn(self);
+        self.update_naval_fleet_condition();
         self.update_army_supply();
         self.apply_world_event();
         if self.turn % 6 == 0 {
@@ -1500,6 +1501,23 @@ impl GameState {
         best.map(|(coord, _)| coord)
     }
 
+    fn update_naval_fleet_condition(&mut self) {
+        for fleet in &mut self.naval_fleets {
+            let in_home_port = self.world.get(fleet.position).is_some_and(|tile| {
+                tile.owner == Some(fleet.owner)
+                    && tile.city.is_some()
+                    && tile.terrain == Terrain::Coast
+                    && tile.buildings.contains(&Building::Port)
+            });
+            if in_home_port {
+                fleet.strength = (fleet.strength + 12.0).min(100.0);
+                fleet.supply = (fleet.supply + 10.0).min(100.0);
+            } else {
+                fleet.supply = (fleet.supply - 1.0).max(0.0);
+            }
+        }
+    }
+
     fn update_army_supply(&mut self) {
         for army in &mut self.armies {
             let supplied = self
@@ -1751,6 +1769,25 @@ mod tests {
         assert!(game.disembark_armies());
         assert_eq!(game.armies[0].position, sea);
         assert_eq!(game.armies[0].embarked_in, None);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn naval_fleets_repair_and_resupply_at_their_home_port() {
+        let mut game = GameState::new(2046);
+        let port = game.factions[PLAYER_ID].capital;
+        let tile = game.world.get_mut(port).unwrap();
+        tile.terrain = Terrain::Coast;
+        tile.buildings.push(Building::Port);
+        let mut fleet = NavalFleet::new(1, PLAYER_ID, port);
+        fleet.strength = 60.0;
+        fleet.supply = 50.0;
+        game.naval_fleets.push(fleet);
+
+        game.update_naval_fleet_condition();
+
+        assert_eq!(game.naval_fleets[0].strength, 72.0);
+        assert_eq!(game.naval_fleets[0].supply, 60.0);
         assert!(game.validate().is_ok());
     }
 
