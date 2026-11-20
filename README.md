@@ -16,6 +16,8 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
 - A global commodity market where food, timber, stone and iron prices react to world supply and demand, with live buy/sell orders in the Trade Desk.
 - International land and maritime trade routes that ship food, timber, stone or iron to treaty partners; sea routes require ports at both ends and gain additional cargo capacity.
+- Naval transport warfare with two-unit troop capacity, embarkation and coastal landings; fleets have hull strength, can fight hostile fleets, and sink with their embarked troops if defeated.
+- AI amphibious invasions: rival realms build transport fleets, assess hostile naval strength, sail to safe landing coasts and continue with land attacks.
 - Four victory paths: territorial hegemony, scientific ascendancy, economic dominion and cultural legacy.
 - Defeat when the player loses the capital; completed campaigns become terminal and remain saved.
 - Armies with recruitment, movement, supply, experience and province battles. Army pathfinding prefers roads and avoids unsafe borders; unbridged rivers increase supply costs and weaken attacks.
@@ -50,6 +52,10 @@ The goal is a systemic world in which independent realms expand, develop economi
 | 7 | Build barracks |
 | 8 | Build an aqueduct |
 | 9 | Build a road (also permitted in city provinces) |\n| 0 | Build a port in a coastal city |
+| Q | Commission a transport fleet in the selected port |
+| E | Embark an army at the selected fleet |
+| D | Disembark troops at a friendly or neutral coast |
+| K | Sail the nearest fleet one step toward the selected province |
 | 9 | Build a road (also permitted in city provinces) |
 | B | Found a city in the selected province |
 | G / V / J | Recruit infantry / cavalry / siege armies |
