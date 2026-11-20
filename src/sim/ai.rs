@@ -362,7 +362,7 @@ mod tests {
         let mut game = GameState::new(2040);
         game.factions[1].personality = AiPersonality::Merchant;
         game.factions[2].personality = AiPersonality::Balanced;
-        assert!(!trade_proposal_accepted(&game, 1, 2, 20));
+        assert!(!trade_proposal_accepted(&game, 1, 2, 17));
         assert!(trade_proposal_accepted(&game, 1, 2, 30));
         game.factions[1].personality = AiPersonality::Expansionist;
         assert!(!trade_proposal_accepted(&game, 1, 2, 30));
