@@ -16,6 +16,8 @@
 - Added rival AI city founding and personality-based province development.
 - Added AI relationship drift, trade, alliances, timed truces and BFS army pathfinding.
 - Added war exhaustion pressure and expanded unit/building controls.
+- Added six government identities and six civic policies with economic and stability modifiers.
+- Added national policy reforms, legitimacy, unrest, and revolt-driven province loss.
 - Added tests for the simulation domains, rival turns and campaign persistence.
 
 ## 0.1.0-dev — Initial playable prototype

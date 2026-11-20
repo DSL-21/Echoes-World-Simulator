@@ -26,6 +26,9 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Versioned JSON save/load
 - [x] Rival AI city founding and personality-based province development
 - [x] AI relationship drift, trade, alliances, truces and army pathfinding
+- [x] Government types and civic policies with economic/stability effects
+- [x] Legitimacy, unrest pressure and province revolt resolution
+- [x] Player national reform action with resource cost and cooldown
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests
 
@@ -35,7 +38,7 @@ The project is being built as a connected simulation rather than a collection of
 - [ ] Diplomacy AI: proposals, alliances, guarantees and demands
 - [ ] War goals, peace terms, occupations and sieges
 - [ ] Unit recruitment by province, commanders and army composition
-- [ ] Province autonomy, governors, unrest and revolts
+- [ ] Province autonomy and governors (unrest/revolt foundations are implemented)
 - [ ] Faction objectives, personalities and difficulty settings
 
 ## 0.4 — Civilization and world history

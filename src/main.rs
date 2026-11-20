@@ -101,6 +101,7 @@ enum UiAction {
     MoveArmy,
     Save,
     Load,
+    Reform,
 }
 
 fn setup(mut commands: Commands, session: Res<Session>) {
@@ -522,6 +523,35 @@ fn spawn_hud(commands: &mut Commands) {
                             row.spawn((
                                 Button,
                                 Hovered::default(),
+                                UiAction::Reform,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.31, 0.29, 0.44)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("NATIONAL REFORM  [L]"),
+                                    TextFont::from_font_size(10.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
                                 UiAction::Trade,
                                 Node {
                                     width: px(160),
@@ -689,7 +719,7 @@ fn spawn_hud(commands: &mut Commands) {
         },
         BackgroundColor(Color::srgba(0.025, 0.043, 0.065, 0.92)),
         Text::new(
-            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–8 DEVELOP  •  B CITY  •  G/V/J ARMY",
+            "LEFT CLICK SELECT  •  WASD PAN  •  +/- ZOOM  •  1–8 DEVELOP  •  B CITY  •  G/V/J ARMY  •  L REFORM",
         ),
         TextFont::from_font_size(10.5),
         TextColor(Color::srgb(0.57, 0.68, 0.72)),
@@ -811,6 +841,9 @@ fn handle_keyboard(input: Res<ButtonInput<KeyCode>>, mut session: ResMut<Session
     }
     if input.just_pressed(KeyCode::KeyR) {
         game.start_next_research();
+    }
+    if input.just_pressed(KeyCode::KeyL) {
+        game.cycle_player_policy();
     }
     if input.just_pressed(KeyCode::KeyM) {
         game.move_nearest_army_to_selected();
@@ -942,6 +975,9 @@ fn handle_ui_activate(
             }
         }
         UiAction::Load => {}
+        UiAction::Reform => {
+            game.cycle_player_policy();
+        }
     }
 }
 
@@ -1058,12 +1094,16 @@ fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
                 player.resources.influence
             ),
             HudLine::Realm => format!(
-                "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\nSTABILITY {:.0}%  •  PRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",
+                "POP {}  •  PROVINCES {}  •  CITIES {}  •  ARMIES {}\n{}  •  {}\nSTABILITY {:.0}%  •  UNREST {:.0}%  •  LEGITIMACY {:.0}%\nPRESTIGE {:.0}  •  WAR EXHAUSTION {:.0}%",
                 player.population,
                 game.owned_count(PLAYER_ID),
                 game.city_count(PLAYER_ID),
                 game.army_count(PLAYER_ID),
+                player.government.name(),
+                player.policy.name(),
                 player.stability,
+                player.unrest,
+                player.legitimacy,
                 player.prestige,
                 player.war_exhaustion
             ),

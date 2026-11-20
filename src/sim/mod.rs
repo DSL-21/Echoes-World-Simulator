@@ -3,6 +3,7 @@ pub mod diplomacy;
 pub mod economy;
 pub mod events;
 pub mod military;
+pub mod society;
 pub mod technology;
 pub mod world;
 
@@ -15,6 +16,7 @@ use self::{
     economy::{Building, Resources, terrain_yield},
     events::WorldEvent,
     military::{Army, UnitClass, recruitment_cost},
+    society::{CivicPolicy, GovernmentType},
     technology::Technology,
     world::{Coord, WorldMap},
 };
@@ -56,10 +58,24 @@ pub struct Faction {
     pub tax_rate: f32,
     pub prestige: f32,
     pub war_exhaustion: f32,
+    #[serde(default)]
+    pub government: GovernmentType,
+    #[serde(default)]
+    pub policy: CivicPolicy,
+    #[serde(default)]
+    pub unrest: f32,
+    #[serde(default = "default_legitimacy")]
+    pub legitimacy: f32,
+    #[serde(default)]
+    pub policy_changed_turn: u32,
     pub personality: AiPersonality,
     pub active_research: Option<Technology>,
     pub research_progress: f32,
     pub technologies: Vec<Technology>,
+}
+
+fn default_legitimacy() -> f32 {
+    68.0
 }
 
 impl Faction {
@@ -77,6 +93,11 @@ impl Faction {
             tax_rate: 0.18,
             prestige: 10.0,
             war_exhaustion: 0.0,
+            government: GovernmentType::for_faction(id),
+            policy: CivicPolicy::for_faction(id),
+            unrest: 8.0,
+            legitimacy: 68.0,
+            policy_changed_turn: 1,
             personality: AiPersonality::for_faction(id),
             active_research: None,
             research_progress: 0.0,
@@ -550,6 +571,26 @@ impl GameState {
         true
     }
 
+    pub fn cycle_player_policy(&mut self) -> bool {
+        let faction = &self.factions[PLAYER_ID];
+        if self.turn.saturating_sub(faction.policy_changed_turn) < 6 {
+            self.add_log("The council cannot enact another major reform yet. Allow the previous policy to take effect.");
+            return false;
+        }
+        let next_policy = faction.policy.next();
+        let cost = Resources { gold: 18.0, influence: 14.0, ..Default::default() };
+        if !self.factions[PLAYER_ID].resources.pay(&cost) {
+            self.add_log("A national reform requires 18 gold and 14 influence.");
+            return false;
+        }
+        let faction = &mut self.factions[PLAYER_ID];
+        faction.policy = next_policy;
+        faction.policy_changed_turn = self.turn;
+        let name = next_policy.name();
+        self.add_log(format!("NATIONAL REFORM — the council adopts {name}."));
+        true
+    }
+
     pub fn start_next_research(&mut self) -> bool {
         if self.factions[PLAYER_ID].active_research.is_some() {
             Self::push_chronicle(
@@ -696,31 +737,32 @@ impl GameState {
     pub fn advance_turn(&mut self) {
         self.turn += 1;
         self.year += 1;
+
         for faction_id in 0..self.factions.len() {
             let production = self.calculate_production(faction_id);
             let cities = self.city_count(faction_id) as f32;
-            let upkeep: f32 = self
-                .armies
-                .iter()
-                .filter(|a| a.owner == faction_id)
-                .map(|a| a.strength * 0.035)
+            let upkeep: f32 = self.armies.iter()
+                .filter(|army| army.owner == faction_id)
+                .map(|army| army.strength * 0.035)
                 .sum();
-            let active_wars = self.relations[faction_id]
-                .iter()
+            let active_wars = self.relations[faction_id].iter()
                 .filter(|relation| relation.treaty == Treaty::War)
                 .count() as f32;
             let faction = &mut self.factions[faction_id];
+            let modifiers = faction.government.modifiers().combine(faction.policy.modifiers());
+            let tax_multiplier = (1.0 + modifiers.tax).clamp(0.65, 1.5);
+            let upkeep_multiplier = (1.0 - modifiers.army_upkeep).clamp(0.5, 1.0);
+
             faction.war_exhaustion = (faction.war_exhaustion + active_wars * 0.18).min(100.0);
             faction.resources.add(&production);
             faction.resources.food -= faction.population as f32 * 0.22;
-            faction.resources.gold +=
-                faction.population as f32 * faction.tax_rate * 0.12 + cities * 1.8 - upkeep;
-            faction.resources.influence += 0.8 + cities * 0.55;
+            faction.resources.gold += faction.population as f32 * faction.tax_rate
+                * 0.12 * tax_multiplier + cities * 1.8 - upkeep * upkeep_multiplier;
+            faction.resources.influence += 0.8 + cities * 0.55 + modifiers.influence;
             faction.resources.clamp_non_negative();
 
             if faction.resources.food > faction.population as f32 * 0.85 + 12.0
-                && faction.stability > 35.0
-                && self.turn % 3 == 0
+                && faction.stability > 35.0 && self.turn % 3 == 0
             {
                 faction.population += 1;
                 faction.resources.food -= 5.0;
@@ -729,45 +771,92 @@ impl GameState {
                 faction.population = faction.population.saturating_sub(1).max(1);
                 faction.stability -= 4.0;
                 faction.war_exhaustion = (faction.war_exhaustion + 0.5).min(100.0);
-            } else {
-                faction.stability = (faction.stability + 0.35).min(100.0);
             }
-            faction.stability =
-                (faction.stability - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
+
+            let food_pressure = if faction.resources.food < faction.population as f32 * 0.18 {
+                5.0
+            } else if faction.resources.food > faction.population as f32 * 1.1 {
+                -1.0
+            } else {
+                0.0
+            };
+            let tax_pressure = (faction.tax_rate - 0.18).max(0.0) * 18.0;
+            faction.unrest = (faction.unrest + food_pressure + tax_pressure
+                + active_wars * 0.7 + modifiers.unrest * 2.0 - 0.7).clamp(0.0, 100.0);
+
+            if faction.unrest > 75.0 {
+                faction.legitimacy = (faction.legitimacy - 1.1).max(0.0);
+            } else if faction.unrest < 35.0 && faction.stability > 55.0 {
+                faction.legitimacy = (faction.legitimacy + 0.25).min(100.0);
+            } else {
+                faction.legitimacy = (faction.legitimacy - 0.08).max(0.0);
+            }
+
+            faction.stability = (faction.stability + 0.25 + modifiers.stability
+                - (faction.unrest - 35.0).max(0.0) * 0.015
+                - faction.war_exhaustion * 0.006).clamp(0.0, 100.0);
             faction.war_exhaustion = (faction.war_exhaustion - 0.18).max(0.0);
         }
+
         self.progress_research();
         self.update_trade_income();
         self.process_ai_turns();
         ai::process_turn(self);
         self.update_army_supply();
         self.apply_world_event();
+        if self.turn % 6 == 0 {
+            self.resolve_unrest();
+        }
 
         let year = self.year;
         let provinces = self.owned_count(PLAYER_ID);
         let cities = self.city_count(PLAYER_ID);
         let population = self.factions[PLAYER_ID].population;
-        Self::push_chronicle(
-            &mut self.chronicle,
-            format!(
-                "Year {year} — {provinces} provinces, {cities} cities, population {population}."
-            ),
-        );
+        Self::push_chronicle(&mut self.chronicle, format!(
+            "Year {year} — {provinces} provinces, {cities} cities, population {population}."
+        ));
+    }
+
+    fn resolve_unrest(&mut self) {
+        for faction_id in 0..self.factions.len() {
+            let faction = &self.factions[faction_id];
+            if faction.unrest < 78.0 || faction.legitimacy > 42.0 || self.owned_count(faction_id) < 4 {
+                continue;
+            }
+
+            let capital = faction.capital;
+            let lost_province = self.world.coords().into_iter()
+                .filter(|coord| *coord != capital)
+                .filter_map(|coord| {
+                    let tile = self.world.get(coord)?;
+                    if tile.owner != Some(faction_id) || tile.city.is_some() { return None; }
+                    Some((coord, coord.manhattan(capital)))
+                })
+                .max_by_key(|(_, distance)| *distance)
+                .map(|(coord, _)| coord);
+
+            let Some(coord) = lost_province else { continue; };
+            if let Some(tile) = self.world.get_mut(coord) { tile.owner = None; }
+
+            let realm = self.factions[faction_id].name.clone();
+            let position = format!("{}, {}", coord.x + 1, coord.y + 1);
+            let faction = &mut self.factions[faction_id];
+            faction.unrest = 48.0;
+            faction.legitimacy = (faction.legitimacy - 15.0).max(0.0);
+            faction.stability = (faction.stability - 12.0).max(0.0);
+            faction.population = faction.population.saturating_sub(1).max(1);
+            Self::push_chronicle(&mut self.chronicle, format!(
+                "REVOLT — {realm} loses a province at {position} as local unrest erupts."
+            ));
+        }
     }
 
     fn calculate_production(&self, faction_id: usize) -> Resources {
         let mut output = Resources::default();
         let faction = &self.factions[faction_id];
-        for tile in self
-            .world
-            .tiles
-            .iter()
-            .filter(|tile| tile.owner == Some(faction_id))
-        {
+        for tile in self.world.tiles.iter().filter(|tile| tile.owner == Some(faction_id)) {
             let mut province = terrain_yield(tile.terrain);
-            for building in &tile.buildings {
-                province.add(&building.yield_bonus());
-            }
+            for building in &tile.buildings { province.add(&building.yield_bonus()); }
             if tile.city.is_some() {
                 province.food += 0.8;
                 province.gold += 1.3;
@@ -775,18 +864,20 @@ impl GameState {
             }
             output.add(&province);
         }
-        if faction.has_technology(Technology::Agriculture) {
-            output.food *= 1.15;
-        }
-        if faction.has_technology(Technology::Currency) {
-            output.gold *= 1.12;
-        }
-        if faction.has_technology(Technology::Metallurgy) {
-            output.iron *= 1.20;
-        }
-        if faction.has_technology(Technology::Printing) {
-            output.science *= 1.20;
-        }
+
+        let modifiers = faction.government.modifiers().combine(faction.policy.modifiers());
+        output.food *= (1.0 + modifiers.food).max(0.1);
+        output.timber *= (1.0 + modifiers.timber).max(0.1);
+        output.stone *= (1.0 + modifiers.stone).max(0.1);
+        output.iron *= (1.0 + modifiers.iron).max(0.1);
+        output.gold *= (1.0 + modifiers.gold).max(0.1);
+        output.science *= (1.0 + modifiers.science).max(0.1);
+        output.influence *= (1.0 + modifiers.influence).max(0.1);
+
+        if faction.has_technology(Technology::Agriculture) { output.food *= 1.15; }
+        if faction.has_technology(Technology::Currency) { output.gold *= 1.12; }
+        if faction.has_technology(Technology::Metallurgy) { output.iron *= 1.20; }
+        if faction.has_technology(Technology::Printing) { output.science *= 1.20; }
         output
     }
 
@@ -815,9 +906,13 @@ impl GameState {
     fn update_trade_income(&mut self) {
         for a in 0..self.factions.len() {
             for b in (a + 1)..self.factions.len() {
-                if self.treaty_between(a, b) == Treaty::TradeAgreement {
-                    self.factions[a].resources.gold += 1.2;
-                    self.factions[b].resources.gold += 1.2;
+                if matches!(self.treaty_between(a, b), Treaty::TradeAgreement | Treaty::Alliance) {
+                    let a_modifiers = self.factions[a].government.modifiers()
+                        .combine(self.factions[a].policy.modifiers());
+                    let b_modifiers = self.factions[b].government.modifiers()
+                        .combine(self.factions[b].policy.modifiers());
+                    self.factions[a].resources.gold += 1.2 + a_modifiers.trade_income;
+                    self.factions[b].resources.gold += 1.2 + b_modifiers.trade_income;
                     let opinion = (self.relations[a][b].opinion + 1).min(100);
                     self.relations[a][b].opinion = opinion;
                     self.relations[b][a].opinion = opinion;
@@ -1049,6 +1144,44 @@ mod tests {
         }
         assert!(game.recruit_army(UnitClass::Infantry));
         assert_eq!(game.army_count(PLAYER_ID), 1);
+    }
+
+    #[test]
+    fn national_reform_changes_policy_and_respects_a_cooldown() {
+        let mut game = GameState::new(2026);
+        game.turn = 10;
+        game.factions[PLAYER_ID].resources.gold = 100.0;
+        game.factions[PLAYER_ID].resources.influence = 100.0;
+        let before = game.factions[PLAYER_ID].policy;
+        assert!(game.cycle_player_policy());
+        assert_ne!(game.factions[PLAYER_ID].policy, before);
+        assert!(!game.cycle_player_policy());
+    }
+
+    #[test]
+    fn severe_unrest_can_trigger_a_province_revolt() {
+        let mut game = GameState::new(2027);
+        let capital = game.factions[PLAYER_ID].capital;
+        let extra = game.world.coords().into_iter().find(|coord| {
+            *coord != capital && game.world.get(*coord).is_some_and(|tile| tile.owner.is_none())
+        }).expect("map has at least one neutral province");
+        game.world.get_mut(extra).unwrap().owner = Some(PLAYER_ID);
+        game.factions[PLAYER_ID].unrest = 95.0;
+        game.factions[PLAYER_ID].legitimacy = 10.0;
+        let before = game.owned_count(PLAYER_ID);
+        game.resolve_unrest();
+        assert!(game.owned_count(PLAYER_ID) < before);
+        assert!(game.factions[PLAYER_ID].unrest < 95.0);
+    }
+
+    #[test]
+    fn civic_policy_and_government_supply_economic_modifiers() {
+        let game = GameState::new(2028);
+        let player = &game.factions[PLAYER_ID];
+        let modifiers = player.government.modifiers().combine(player.policy.modifiers());
+        assert!(modifiers.stability.is_finite());
+        assert!(modifiers.gold.is_finite());
+        assert!(modifiers.science.is_finite());
     }
 
     #[test]

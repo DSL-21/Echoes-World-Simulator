@@ -12,7 +12,8 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Economy with food, timber, stone, iron, gold, science and influence.
 - Eight province building types with costs and production effects.
 - City founding and population tracking.
-- Diplomacy with trade agreements, war declarations and truces.
+- Diplomacy with trade agreements, alliances, war declarations and truces.
+- Internal politics with five government forms, six civic policies, legitimacy, unrest and province revolts.
 - Armies with recruitment, movement, supply, experience and province battles.
 - Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
 - Research tree with prerequisites and technology effects.
@@ -45,10 +46,11 @@ The goal is a systemic world in which independent realms expand, develop economi
 | T | Propose a trade agreement with the selected realm |
 | X | Declare war on the selected realm |
 | P | Offer a truce to the selected realm |
+| L | Enact the next national civic policy (costs gold and influence; six-year cooldown) |
 | F5 | Save campaign to echoes_save.json |
 | F9 | Load campaign from echoes_save.json |
 
-The in-game Realm Council also provides clickable actions. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The in-game Realm Council also provides clickable actions. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
 ## Build from source
 
