@@ -32,6 +32,11 @@ The goal is a systemic world in which independent realms expand, develop economi
 | Left mouse button | Select a province |
 | WASD | Pan the camera |
 | Plus / minus | Zoom in / out |
+| F1 | Terrain map layer |
+| F2 | Political ownership map layer |
+| F3 | Population density map layer |
+| F4 | Resource potential map layer |
+| F6 | Infrastructure map layer |
 | Space | Advance one year |
 | C | Claim selected adjacent neutral province |
 | 1 | Build a farm |
@@ -54,7 +59,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | F5 | Save campaign to echoes_save.json |
 | F9 | Load campaign from echoes_save.json |
 
-The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The five map layers can be changed at any time with F1–F4 and F6; F5 remains reserved for saving. The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
 ## Campaign goals
 

@@ -2,6 +2,9 @@
 
 ## 0.2.0-dev — Simulation foundation
 
+- Added five strategic map layers: terrain, political ownership, population, resource potential and infrastructure.
+- Added keyboard layer switching and a live map-mode label.
+
 - Replaced the single-file prototype model with separate simulation modules.
 - Expanded the world to a larger deterministic map with eight terrain classes.
 - Added seven resource types and terrain/building production.

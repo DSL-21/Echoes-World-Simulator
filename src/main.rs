@@ -11,7 +11,7 @@ use bevy::{
 use sim::{
     GameState, PLAYER_ID,
     diplomacy::Treaty,
-    economy::Building,
+    economy::{terrain_yield, Building},
     market::Commodity,
     military::{Army, UnitClass},
     world::{Coord, Terrain},
@@ -26,6 +26,7 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.018, 0.027, 0.043)))
         .insert_resource(Session(GameState::new(20261120)))
+        .insert_resource(MapView::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "ECHOES — Living World Simulator".to_owned(),
@@ -43,6 +44,7 @@ fn main() {
                 handle_camera,
                 handle_mouse_selection,
                 handle_keyboard,
+                handle_map_layers,
                 update_tile_visuals,
                 update_city_markers,
                 update_army_markers,
@@ -78,6 +80,44 @@ enum HudLine {
     Selected,
     Politics,
     Chronicle,
+    MapLayer,
+}
+
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct MapView {
+    layer: MapLayerMode,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum MapLayerMode {
+    Terrain,
+    #[default]
+    Political,
+    Population,
+    Resources,
+    Infrastructure,
+}
+
+impl MapLayerMode {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Terrain => "Terrain",
+            Self::Political => "Political ownership",
+            Self::Population => "Population",
+            Self::Resources => "Resource potential",
+            Self::Infrastructure => "Infrastructure",
+        }
+    }
+
+    fn hint(self) -> &'static str {
+        match self {
+            Self::Terrain => "F1 terrain",
+            Self::Political => "F2 realm borders",
+            Self::Population => "F3 settlement density",
+            Self::Resources => "F4 production potential",
+            Self::Infrastructure => "F6 cities and buildings",
+        }
+    }
 }
 
 #[derive(Component, Clone, Copy)]
@@ -934,6 +974,21 @@ fn spawn_hud(commands: &mut Commands) {
         Node {
             position_type: PositionType::Absolute,
             left: px(18),
+            bottom: px(48),
+            padding: UiRect::axes(px(13), px(7)),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.025, 0.043, 0.065, 0.92)),
+        Text::new("MAP LAYER: POLITICAL OWNERSHIP  •  F2"),
+        TextFont::from_font_size(10.5),
+        TextColor(Color::srgb(0.82, 0.75, 0.57)),
+        HudLine::MapLayer,
+    ));
+
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(18),
             bottom: px(16),
             padding: UiRect::axes(px(13), px(8)),
             ..default()
@@ -1245,25 +1300,79 @@ fn handle_ui_activate(
     }
 }
 
-fn update_tile_visuals(session: Res<Session>, mut visuals: Query<(&TileVisual, &mut Sprite)>) {
-    if !session.is_changed() {
+fn handle_map_layers(input: Res<ButtonInput<KeyCode>>, mut map_view: ResMut<MapView>) {
+    if input.just_pressed(KeyCode::F1) {
+        map_view.layer = MapLayerMode::Terrain;
+    } else if input.just_pressed(KeyCode::F2) {
+        map_view.layer = MapLayerMode::Political;
+    } else if input.just_pressed(KeyCode::F3) {
+        map_view.layer = MapLayerMode::Population;
+    } else if input.just_pressed(KeyCode::F4) {
+        map_view.layer = MapLayerMode::Resources;
+    } else if input.just_pressed(KeyCode::F6) {
+        map_view.layer = MapLayerMode::Infrastructure;
+    }
+}
+
+fn update_tile_visuals(
+    session: Res<Session>,
+    map_view: Res<MapView>,
+    mut visuals: Query<(&TileVisual, &mut Sprite)>,
+) {
+    if !session.is_changed() && !map_view.is_changed() {
         return;
     }
     for (visual, mut sprite) in &mut visuals {
         if let Some(tile) = session.0.world.get(visual.0) {
-            let mut rgb = tile.terrain.color();
-            if let Some(owner) = tile.owner {
-                if let Some(faction) = session.0.factions.get(owner) {
-                    rgb = [
-                        rgb[0] * 0.50 + faction.color[0] * 0.50,
-                        rgb[1] * 0.50 + faction.color[1] * 0.50,
-                        rgb[2] * 0.50 + faction.color[2] * 0.50,
-                    ];
+            let rgb = match map_view.layer {
+                MapLayerMode::Terrain => tile.terrain.color(),
+                MapLayerMode::Political => {
+                    let base = tile.terrain.color();
+                    if let Some(faction) = tile.owner.and_then(|owner| session.0.factions.get(owner)) {
+                        [
+                            base[0] * 0.36 + faction.color[0] * 0.64,
+                            base[1] * 0.36 + faction.color[1] * 0.64,
+                            base[2] * 0.36 + faction.color[2] * 0.64,
+                        ]
+                    } else {
+                        base
+                    }
                 }
-            }
-            if tile.buildings.iter().any(|b| *b == Building::Farm) {
-                rgb[1] = (rgb[1] + 0.06).min(1.0);
-            }
+                MapLayerMode::Population => {
+                    let density = (tile.population as f32 / 24.0).clamp(0.0, 1.0);
+                    [
+                        0.08 + density * 0.82,
+                        0.13 + density * 0.52,
+                        0.20 + (1.0 - density) * 0.08,
+                    ]
+                }
+                MapLayerMode::Resources => {
+                    let mut yield_value = terrain_yield(tile.terrain);
+                    for building in &tile.buildings {
+                        yield_value.add(&building.yield_bonus());
+                    }
+                    let total = yield_value.food + yield_value.timber + yield_value.stone
+                        + yield_value.iron + yield_value.gold + yield_value.science;
+                    let intensity = (total / 11.0).clamp(0.0, 1.0);
+                    [
+                        0.07 + intensity * 0.78,
+                        0.15 + intensity * 0.68,
+                        0.22 + (1.0 - intensity) * 0.10,
+                    ]
+                }
+                MapLayerMode::Infrastructure => {
+                    if tile.city.is_some() {
+                        [0.95, 0.76, 0.30]
+                    } else {
+                        let intensity = (tile.buildings.len() as f32 / 3.0).clamp(0.0, 1.0);
+                        [
+                            0.10 + intensity * 0.66,
+                            0.17 + intensity * 0.62,
+                            0.22 + intensity * 0.18,
+                        ]
+                    }
+                }
+            };
             sprite.color = Color::srgb(rgb[0], rgb[1], rgb[2]);
         }
     }
@@ -1334,8 +1443,12 @@ fn update_selection_highlight(
     }
 }
 
-fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
-    if !session.is_changed() {
+fn update_hud(
+    session: Res<Session>,
+    map_view: Res<MapView>,
+    mut labels: Query<(&mut Text, &HudLine)>,
+) {
+    if !session.is_changed() && !map_view.is_changed() {
         return;
     }
     let game = &session.0;
@@ -1343,6 +1456,7 @@ fn update_hud(session: Res<Session>, mut labels: Query<(&mut Text, &HudLine)>) {
     let target = selected_foreign_owner(game);
     for (mut text, line) in &mut labels {
         **text = match line {
+            HudLine::MapLayer => format!("MAP LAYER: {}  •  {}", map_view.layer.name().to_uppercase(), map_view.layer.hint()),
             HudLine::Header => {
                 if let Some(outcome) = &game.outcome {
                     format!(
@@ -1459,6 +1573,15 @@ mod tests {
         assert_eq!(game.world.width, sim::WORLD_WIDTH);
         assert_eq!(game.world.height, sim::WORLD_HEIGHT);
         assert!(game.world.get(Coord::new(0, 0)).is_some());
+    }
+
+    #[test]
+    fn map_layers_expose_all_strategic_views() {
+        assert_eq!(MapLayerMode::Terrain.name(), "Terrain");
+        assert_eq!(MapLayerMode::Political.name(), "Political ownership");
+        assert_eq!(MapLayerMode::Population.name(), "Population");
+        assert_eq!(MapLayerMode::Resources.name(), "Resource potential");
+        assert_eq!(MapLayerMode::Infrastructure.name(), "Infrastructure");
     }
 
     #[test]

@@ -23,6 +23,7 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Technology catalogue, prerequisites and research progress
 - [x] Periodic world events with persistent effects
 - [x] Camera pan and zoom
+- [x] Strategic map overlays for terrain, political ownership, population, resource potential and infrastructure
 - [x] Versioned JSON save/load
 - [x] Rival AI city founding and personality-based province development
 - [x] AI relationship drift, trade, alliances, truces and army pathfinding
@@ -54,7 +55,7 @@ The project is being built as a connected simulation rather than a collection of
 - [ ] Victory conditions and sandbox campaign rules
 
 ## 0.5 — World presentation and release quality
-- [ ] World map layers, labels, borders and province overlays
+- [ ] Province names, animated borders, trade-route and army-range overlays
 - [ ] City and army models/icons with animated state changes
 - [ ] Main menu, scenario setup, settings and tutorial
 - [ ] Audio, ambience, music and event presentation
