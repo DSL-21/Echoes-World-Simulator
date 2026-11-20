@@ -864,6 +864,8 @@ impl GameState {
             return false;
         }
         let target_owner = tile.owner;
+        let crosses_river_without_road = tile.river
+            && !tile.buildings.contains(&Building::Road);
         if let Some(defender) = target_owner.filter(|defender| *defender != owner) {
             if self.treaty_between(owner, defender) != Treaty::War {
                 Self::push_chronicle(
@@ -872,7 +874,8 @@ impl GameState {
                 );
                 return false;
             }
-            let attack = self.armies[index].combat_power();
+            let river_attack_modifier = if crosses_river_without_road { 0.82 } else { 1.0 };
+            let attack = self.armies[index].combat_power() * river_attack_modifier;
             let defending_armies: f32 = self
                 .armies
                 .iter()
@@ -925,7 +928,8 @@ impl GameState {
         self.armies[index].position = destination;
         let uses_road = self.world.get(origin).is_some_and(|province| province.buildings.contains(&Building::Road))
             || self.world.get(destination).is_some_and(|province| province.buildings.contains(&Building::Road));
-        let supply_cost = if uses_road { 2.0 } else { 4.0 };
+        let river_supply_cost = if crosses_river_without_road { 2.0 } else { 0.0 };
+        let supply_cost = (if uses_road { 2.0 } else { 4.0 }) + river_supply_cost;
         self.armies[index].supply = (self.armies[index].supply - supply_cost).max(0.0);
         let name = self.armies[index].name.clone();
         Self::push_chronicle(
@@ -1542,6 +1546,24 @@ mod tests {
         let starting_supply = game.armies[0].supply;
         assert!(game.move_army(army_id, destination));
         assert!((game.armies[0].supply - (starting_supply - 2.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn unbridged_river_crossing_costs_additional_army_supply() {
+        let mut game = GameState::new(2035);
+        let capital = game.factions[PLAYER_ID].capital;
+        let destination = game.world.neighbors(capital)[0];
+        let tile = game.world.get_mut(destination).unwrap();
+        tile.terrain = world::Terrain::Grassland;
+        tile.owner = Some(PLAYER_ID);
+        tile.river = true;
+        tile.buildings.clear();
+
+        assert!(game.recruit_army(UnitClass::Infantry));
+        let army_id = game.armies[0].id;
+        let starting_supply = game.armies[0].supply;
+        assert!(game.move_army(army_id, destination));
+        assert!((game.armies[0].supply - (starting_supply - 6.0)).abs() < 0.001);
     }
 
     #[test]

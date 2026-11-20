@@ -46,6 +46,7 @@ fn main() {
                 handle_keyboard,
                 handle_map_layers,
                 update_tile_visuals,
+                update_province_borders,
                 update_city_markers,
                 update_army_markers,
                 update_selection_highlight,
@@ -67,6 +68,12 @@ struct CityVisual(Coord);
 
 #[derive(Component)]
 struct RiverVisual(Coord);
+
+#[derive(Component, Clone, Copy)]
+struct ProvinceBorder {
+    first: Coord,
+    second: Coord,
+}
 
 #[derive(Component)]
 struct MainMenuOverlay;
@@ -192,6 +199,33 @@ fn setup(mut commands: Commands, session: Res<Session>) {
             CityVisual(coord),
             Visibility::Hidden,
         ));
+        if coord.x + 1 < session.0.world.width {
+            let neighbor = Coord::new(coord.x + 1, coord.y);
+            if session.0.world.get(neighbor).is_some_and(|tile| tile.terrain.is_land())
+                && session.0.world.get(coord).is_some_and(|tile| tile.terrain.is_land())
+            {
+                commands.spawn((
+                    Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(2.0, TILE_SIZE)),
+                    Transform::from_translation(position + Vec3::new(TILE_STEP * 0.5, 0.0, 3.3)),
+                    ProvinceBorder { first: coord, second: neighbor },
+                    Visibility::Hidden,
+                ));
+            }
+        }
+        if coord.y + 1 < session.0.world.height {
+            let neighbor = Coord::new(coord.x, coord.y + 1);
+            if session.0.world.get(neighbor).is_some_and(|tile| tile.terrain.is_land())
+                && session.0.world.get(coord).is_some_and(|tile| tile.terrain.is_land())
+            {
+                commands.spawn((
+                    Sprite::from_color(Color::srgba(0.8, 0.7, 0.5, 0.75), Vec2::new(TILE_SIZE, 2.0)),
+                    Transform::from_translation(position + Vec3::new(0.0, -TILE_STEP * 0.5, 3.3)),
+                    ProvinceBorder { first: coord, second: neighbor },
+                    Visibility::Hidden,
+                ));
+            }
+        }
+
         if session.0.world.get(coord).is_some_and(|tile| tile.river) {
             let neighbors = session.0.world.neighbors(coord);
             let has_horizontal = neighbors.iter().any(|neighbor| {
@@ -346,7 +380,7 @@ fn spawn_main_menu(commands: &mut Commands) {
                     });
 
                     card.spawn((
-                        Text::new("F5 SAVE  •  F9 LOAD  •  ESC PAUSE / RETURN  •  WASD PAN"),
+                        Text::new("F5 SAVE  •  F9 LOAD  •  ESC MENU  •  T TREATY  •  Y/H/N/U TRADE ROUTES"),
                         TextFont::from_font_size(10.0),
                         TextColor(Color::srgb(0.43, 0.57, 0.65)),
                     ));
@@ -1703,6 +1737,32 @@ fn update_tile_visuals(
     }
 }
 
+fn update_province_borders(
+    session: Res<Session>,
+    mut borders: Query<(&ProvinceBorder, &mut Sprite, &mut Visibility)>,
+) {
+    if !session.is_changed() {
+        return;
+    }
+    for (border, mut sprite, mut visibility) in &mut borders {
+        let first_owner = session.0.world.get(border.first).and_then(|tile| tile.owner);
+        let second_owner = session.0.world.get(border.second).and_then(|tile| tile.owner);
+        match (first_owner, second_owner) {
+            (Some(first), Some(second)) if first != second => {
+                sprite.color = Color::srgba(0.94, 0.75, 0.42, 0.88);
+                *visibility = Visibility::Visible;
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                sprite.color = Color::srgba(0.67, 0.72, 0.68, 0.42);
+                *visibility = Visibility::Visible;
+            }
+            _ => {
+                *visibility = Visibility::Hidden;
+            }
+        }
+    }
+}
+
 fn update_city_markers(
     session: Res<Session>,
     mut markers: Query<(&CityVisual, &mut Transform, &mut Visibility)>,
@@ -1862,7 +1922,7 @@ fn update_hud(
                 if let Some(target) = target {
                     let relation = &game.relations[PLAYER_ID][target];
                     format!(
-                        "Target: {}\nStatus: {}  •  Opinion: {}\nTrade routes: {}/{} active\n[T] trade  [Y] food route  [X] war  [P] peace",
+                        "Target: {}\nStatus: {}  •  Opinion: {}\nTrade routes: {}/{} active\n[T] treaty  [Y/H/N/U] trade routes  [X] war  [P] peace",
                         game.factions[target].name,
                         relation.treaty.label(),
                         relation.opinion,

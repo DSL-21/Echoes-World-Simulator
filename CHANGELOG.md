@@ -2,6 +2,9 @@
 
 ## 0.2.0-dev — Simulation foundation
 
+- Added dynamic province borders that render ownership frontiers and update when land is claimed or captured.
+- Made unbridged rivers increase marching supply costs and reduce attacking force; roads mitigate both effects.
+
 - Added international land trade routes for food, timber, stone and iron with treaty checks, partner payments, stock reserves and road-enhanced capacity.
 - Added route suspension when diplomatic access or the safe land corridor is lost.
 
