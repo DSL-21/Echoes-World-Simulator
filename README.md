@@ -14,6 +14,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - City founding and population tracking.
 - Diplomacy with trade agreements, war declarations and truces.
 - Armies with recruitment, movement, supply, experience and province battles.
+- Rival AI city founding, personality-based province development, diplomacy drift, trade and alliance decisions, and army pathfinding.
 - Research tree with prerequisites and technology effects.
 - Periodic world events and a persistent chronicle.
 - Camera panning and zoom, province selection and contextual realm information.
@@ -33,8 +34,12 @@ The goal is a systemic world in which independent realms expand, develop economi
 | 2 | Build a lumber mill |
 | 3 | Build a quarry |
 | 4 | Build a market |
+| 5 | Build an iron mine |
+| 6 | Build a library |
+| 7 | Build barracks |
+| 8 | Build an aqueduct |
 | B | Found a city in the selected province |
-| G | Recruit an infantry army |
+| G / V / J | Recruit infantry / cavalry / siege armies |
 | R | Start the next available technology |
 | M | Move the nearest army to the selected adjacent province |
 | T | Propose a trade agreement with the selected realm |

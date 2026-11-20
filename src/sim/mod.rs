@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod diplomacy;
 pub mod economy;
 pub mod events;
@@ -587,7 +588,7 @@ impl GameState {
         let nearest = self
             .armies
             .iter()
-            .filter(|army| army.owner == PLAYER_ID)
+            .filter(|army| army.owner == PLAYER_ID && army.position.manhattan(selected) == 1)
             .min_by_key(|army| army.position.manhattan(selected))
             .map(|army| army.id);
         let Some(id) = nearest else {
@@ -704,7 +705,12 @@ impl GameState {
                 .filter(|a| a.owner == faction_id)
                 .map(|a| a.strength * 0.035)
                 .sum();
+            let active_wars = self.relations[faction_id]
+                .iter()
+                .filter(|relation| relation.treaty == Treaty::War)
+                .count() as f32;
             let faction = &mut self.factions[faction_id];
+            faction.war_exhaustion = (faction.war_exhaustion + active_wars * 0.18).min(100.0);
             faction.resources.add(&production);
             faction.resources.food -= faction.population as f32 * 0.22;
             faction.resources.gold +=
@@ -733,6 +739,7 @@ impl GameState {
         self.progress_research();
         self.update_trade_income();
         self.process_ai_turns();
+        ai::process_turn(self);
         self.update_army_supply();
         self.apply_world_event();
 
@@ -764,7 +771,7 @@ impl GameState {
             if tile.city.is_some() {
                 province.food += 0.8;
                 province.gold += 1.3;
-                province.science += 0.5;
+                province.science += 1.0;
             }
             output.add(&province);
         }

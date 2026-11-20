@@ -119,12 +119,12 @@ impl WorldMap {
                 let continental_bias = 0.14 * (1.0 - (nx * nx * 0.62 + ny * ny * 0.82).sqrt());
                 let elevation = broad * 0.66 + detail * 0.24 + continental_bias;
 
-                let latitude = (ny.abs() * 0.75 + 1.0 - moisture) * 0.5;
+                let latitude = ny.abs();
                 let terrain = if elevation < 0.39 {
                     Terrain::Ocean
                 } else if elevation > 0.78 {
                     Terrain::Mountain
-                } else if latitude > 0.87 {
+                } else if latitude > 0.76 && moisture > 0.15 {
                     Terrain::Tundra
                 } else if moisture < 0.23 && elevation < 0.70 {
                     Terrain::Desert

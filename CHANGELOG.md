@@ -13,7 +13,10 @@
 - Added deterministic periodic events with lasting campaign effects.
 - Added camera pan/zoom and an expanded Realm Council.
 - Added versioned JSON save/load through F5 and F9.
-- Added tests for the simulation domains and campaign persistence.
+- Added rival AI city founding and personality-based province development.
+- Added AI relationship drift, trade, alliances, timed truces and BFS army pathfinding.
+- Added war exhaustion pressure and expanded unit/building controls.
+- Added tests for the simulation domains, rival turns and campaign persistence.
 
 ## 0.1.0-dev — Initial playable prototype
 

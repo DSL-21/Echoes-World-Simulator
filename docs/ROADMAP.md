@@ -24,6 +24,8 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Periodic world events with persistent effects
 - [x] Camera pan and zoom
 - [x] Versioned JSON save/load
+- [x] Rival AI city founding and personality-based province development
+- [x] AI relationship drift, trade, alliances, truces and army pathfinding
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests
 
