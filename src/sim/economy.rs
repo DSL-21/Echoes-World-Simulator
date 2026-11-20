@@ -97,6 +97,7 @@ pub enum Building {
     Library,
     Aqueduct,
     Road,
+    Port,
 }
 
 impl Building {
@@ -111,6 +112,7 @@ impl Building {
             Self::Library => "Library",
             Self::Aqueduct => "Aqueduct",
             Self::Road => "Road",
+            Self::Port => "Port",
         }
     }
 
@@ -169,6 +171,13 @@ impl Building {
                 gold: 1.0,
                 ..Default::default()
             },
+            Self::Port => Resources {
+                timber: 22.0,
+                stone: 14.0,
+                iron: 3.0,
+                gold: 24.0,
+                ..Default::default()
+            },
         }
     }
 
@@ -180,6 +189,7 @@ impl Building {
             | Self::Library
             | Self::Aqueduct
             | Self::Road => terrain.is_land(),
+            Self::Port => terrain == Terrain::Coast,
             Self::LumberMill => matches!(terrain, Terrain::Forest | Terrain::Grassland),
             Self::Quarry => matches!(
                 terrain,
@@ -225,6 +235,7 @@ impl Building {
                 ..Default::default()
             },
             Self::Road => Resources::default(),
+            Self::Port => Resources { gold: 1.5, ..Default::default() },
         }
     }
 }
@@ -298,6 +309,9 @@ mod tests {
         assert!(Building::Road.allowed_on(Terrain::Mountain));
         assert!(!Building::Road.allowed_on(Terrain::Ocean));
         assert_eq!(Building::Road.yield_bonus(), Resources::default());
+        assert!(Building::Port.allowed_on(Terrain::Coast));
+        assert!(!Building::Port.allowed_on(Terrain::Ocean));
+        assert!(!Building::Port.allowed_on(Terrain::Grassland));
     }
 
     #[test]
