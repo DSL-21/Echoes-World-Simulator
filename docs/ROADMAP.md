@@ -38,7 +38,7 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Adjustable tax rate with bounded values and unrest consequences
 - [x] Four victory paths, capital-loss defeat condition and terminal campaign state
 - [x] Global commodity market with supply/demand price movement and trade-income effects
-- [x] International land trade routes with treaty access, cargo exports, partner payment and road-based capacity
+- [x] International land and maritime trade routes with treaty access, cargo exports, partner payment and infrastructure-based capacity
 - [x] Player buy/sell orders for food, timber, stone and iron
 - [ ] Verify visual playability on a Windows desktop
 - [x] Add automated multi-year balance and AI simulation tests
@@ -46,7 +46,7 @@ The project is being built as a connected simulation rather than a collection of
 ## 0.3 — Grand strategy systems
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
 - [x] International overland trade routes
-- [ ] Ports, maritime trade routes and naval transport
+- [x] Coastal ports and maritime trade routes with navigable-water pathfinding and save validation\n- [ ] Naval transport and military fleets
 - [ ] Diplomacy AI: guarantees, demands and player-facing negotiation (personality-driven trade, alliance and war proposals implemented)
 - [ ] War goals, peace terms, occupations and sieges
 - [ ] Unit recruitment by province, commanders and army composition
