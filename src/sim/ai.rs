@@ -385,6 +385,15 @@ fn process_naval_warfare(game: &mut GameState) {
             fleet.owner == owner
                 && game.armies.iter().any(|army| army.embarked_in == Some(fleet.id))
         }).map(|fleet| fleet.id);
+        if active_fleet.is_none()
+            && game.naval_fleets.iter().any(|fleet| {
+                fleet.owner == owner && !ports.contains(&fleet.position)
+            })
+        {
+            // A fleet that has already delivered its troops remains on station;
+            // do not manufacture a replacement fleet every turn.
+            continue;
+        }
 
         let (fleet_id, should_embark) = if let Some(id) = active_fleet {
             (id, false)
@@ -437,10 +446,12 @@ fn process_naval_warfare(game: &mut GameState) {
             let capacity = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
                 .map(|fleet| fleet.capacity).unwrap_or(0);
             let aboard = game.armies.iter().filter(|army| army.embarked_in == Some(fleet_id)).count();
+            let fleet_port = game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id)
+                .map(|fleet| fleet.position);
             if aboard < capacity {
                 if let Some(army) = game.armies.iter_mut().find(|army| {
                     army.owner == owner
-                        && army.position == game.naval_fleets.iter().find(|fleet| fleet.id == fleet_id).map(|fleet| fleet.position).unwrap_or_default()
+                        && Some(army.position) == fleet_port
                         && army.embarked_in.is_none()
                 }) {
                     army.embarked_in = Some(fleet_id);
