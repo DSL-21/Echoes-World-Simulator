@@ -2164,6 +2164,64 @@ mod tests {
     }
 
     #[test]
+    fn friendly_realm_accepts_tribute_and_transfers_gold_atomically() {
+        let mut game = GameState::new(2051);
+        game.factions[1].resources.gold = 200.0;
+        game.relations[PLAYER_ID][1].opinion = 45;
+        game.relations[1][PLAYER_ID].opinion = 45;
+        let player_before = game.factions[PLAYER_ID].resources.gold;
+
+        assert!(game.demand_tribute(1));
+        assert!((game.factions[1].resources.gold - 184.0).abs() < 0.001);
+        assert!((game.factions[PLAYER_ID].resources.gold - (player_before + 16.0)).abs() < 0.001);
+        assert_eq!(game.relations[PLAYER_ID][1].opinion, 39);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn exhausted_realm_can_accept_tribute_under_clear_military_pressure() {
+        let mut game = GameState::new(2052);
+        game.factions[1].resources.gold = 100.0;
+        game.factions[1].war_exhaustion = 20.0;
+        game.relations[PLAYER_ID][1].opinion = -20;
+        game.relations[1][PLAYER_ID].opinion = -20;
+        game.armies.push(Army::new(1, PLAYER_ID, game.factions[PLAYER_ID].capital, UnitClass::Infantry));
+        game.next_army_id = 2;
+
+        assert!(game.demand_tribute(1));
+        assert!((game.factions[1].resources.gold - 92.0).abs() < 0.001);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn hostile_realm_rejects_unsupported_tribute_demand() {
+        let mut game = GameState::new(2053);
+        game.factions[1].resources.gold = 100.0;
+        game.relations[PLAYER_ID][1].opinion = -60;
+        game.relations[1][PLAYER_ID].opinion = -60;
+        let player_before = game.factions[PLAYER_ID].resources.gold;
+
+        assert!(!game.demand_tribute(1));
+        assert_eq!(game.factions[1].resources.gold, 100.0);
+        assert_eq!(game.factions[PLAYER_ID].resources.gold, player_before);
+        assert_eq!(game.relations[PLAYER_ID][1].opinion, -63);
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
+    fn tribute_cannot_be_demanded_during_war_or_from_a_realm_without_funds() {
+        let mut game = GameState::new(2054);
+        game.factions[1].resources.gold = 3.0;
+        game.relations[PLAYER_ID][1].opinion = 90;
+        game.relations[1][PLAYER_ID].opinion = 90;
+        assert!(!game.demand_tribute(1));
+        game.factions[1].resources.gold = 100.0;
+        set_symmetric(&mut game.relations, PLAYER_ID, 1, Treaty::War, game.turn);
+        assert!(!game.demand_tribute(1));
+        assert!(game.validate().is_ok());
+    }
+
+    #[test]
     fn diplomacy_is_symmetric_and_can_transition_to_truce() {
         let mut game = GameState::new(9);
         assert!(game.offer_trade_agreement(1));
