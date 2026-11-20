@@ -17,10 +17,8 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Separate simulation modules from Bevy presentation
 - [x] Expanded world terrain and deterministic generation
 - [x] Procedural rivers that follow land from mountains to coastal provinces
-- [x] Procedural rivers that follow land from mountains to coastal provinces
 - [x] Resource stockpiles and terrain/building yield model
 - [x] City founding and settlement population
-- [x] Road infrastructure with movement-supply and defensive effects
 - [x] Road infrastructure with movement-supply and defensive effects
 - [x] Treaty matrix, trade agreements, war and truces
 - [x] Army recruitment, movement, supply and province battles
@@ -29,7 +27,6 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Technology catalogue, prerequisites and research progress
 - [x] Periodic world events with persistent effects
 - [x] Camera pan and zoom
-- [x] Main menu with new campaign, resume, load and Escape pause/resume
 - [x] Main menu with new campaign, resume, load and Escape pause/resume
 - [x] Strategic map overlays for terrain, political ownership, population, resource potential and infrastructure
 - [x] Versioned JSON save/load
@@ -50,7 +47,7 @@ The project is being built as a connected simulation rather than a collection of
 - [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
 - [x] International overland trade routes
 - [ ] Ports, maritime trade routes and naval transport
-- [ ] Diplomacy AI: proposals, alliances, guarantees and demands
+- [ ] Diplomacy AI: guarantees, demands and player-facing negotiation (personality-driven trade, alliance and war proposals implemented)
 - [ ] War goals, peace terms, occupations and sieges
 - [ ] Unit recruitment by province, commanders and army composition
 - [ ] Province autonomy and governors (unrest/revolt foundations are implemented)
