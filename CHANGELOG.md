@@ -3,6 +3,9 @@
 ## 0.2.0-dev — Simulation foundation
 
 - Added five strategic map layers: terrain, political ownership, population, resource potential and infrastructure.
+- Added procedural rivers that wind from mountain regions to the coast.
+- Added buildable roads, with reduced army supply loss and stronger defensive positions.
+- Added a main campaign menu with new campaign, resume, load and Escape pause/resume.
 - Added player army route orders: select a distant province and the nearest reachable army advances one legal land step toward it.
 - Added procedural rivers that wind from mountain regions to the coast.
 - Added buildable roads, with reduced army supply loss and stronger defensive positions.
