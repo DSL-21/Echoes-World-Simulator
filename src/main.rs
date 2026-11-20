@@ -481,7 +481,7 @@ fn update_army_markers(
     mut markers: Query<(&ArmyVisual, &mut Transform, &mut Visibility, &mut Sprite)>,
 ) {
     if !session.is_changed() { return; }
-    let existing: HashSet<u64> = markers.iter().map(|(marker, _, _, _)| marker.0).collect();
+    let existing: HashSet<u64> = markers.iter_mut().map(|(marker, _, _, _)| marker.0).collect();
     for army in &session.0.armies {
         if !existing.contains(&army.id) {
             let color = session.0.factions[army.owner].color;
