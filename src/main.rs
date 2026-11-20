@@ -147,6 +147,7 @@ enum UiAction {
     Barracks,
     Aqueduct,
     Road,
+    Port,
     StartCampaign,
     ResumeCampaign,
     Recruit,
@@ -963,6 +964,35 @@ fn spawn_hud(commands: &mut Commands) {
                             row.spawn((
                                 Button,
                                 Hovered::default(),
+                                UiAction::Port,
+                                Node {
+                                    width: px(160),
+                                    height: px(30),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.18, 0.36, 0.43)),
+                            ))
+                            .with_children(|b| {
+                                b.spawn((
+                                    Text::new("PORT  [COAST]"),
+                                    TextFont::from_font_size(11.0),
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+                        });
+
+                    buttons
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: px(6),
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Button,
+                                Hovered::default(),
                                 UiAction::Recruit,
                                 Node {
                                     width: px(160),
@@ -1552,6 +1582,9 @@ fn handle_ui_activate(
         }
         UiAction::Road => {
             game.build_selected(Building::Road);
+        }
+        UiAction::Port => {
+            game.build_selected(Building::Port);
         }
         UiAction::StartCampaign => {}
         UiAction::ResumeCampaign => {}
