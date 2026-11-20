@@ -390,7 +390,7 @@ impl GameState {
             return false;
         }
 
-        let capacity = route_capacity(self, &path);
+        let capacity = route_capacity(self, &path) + if route_type == TradeRouteType::Maritime { 1.5 } else { 0.0 };
         let id = self.next_trade_route_id;
         self.next_trade_route_id += 1;
         self.trade_routes.push(TradeRoute {
