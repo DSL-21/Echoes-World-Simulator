@@ -25,7 +25,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - Camera panning and zoom, province selection, contextual realm information and five strategic map layers.
 - Main menu with new campaign, resume, load and Escape-to-pause flow.
 - JSON campaign save/load using F5 and F9.
-- Automated tests plus Windows x64 build and downloadable preview artifact.
+- Automated simulation tests, including 100-year multi-seed stability checks and deterministic campaign replay, plus Windows x64 build and downloadable preview artifact.
 
 ## Controls
 
