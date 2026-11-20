@@ -19,6 +19,7 @@
 - Added six government identities and six civic policies with economic and stability modifiers.
 - Added national policy reforms, legitimacy, unrest, and revolt-driven province loss.
 - Added global supply/demand commodity pricing for food, timber, stone and iron.
+- Added market buy/sell orders with spread, stockpile validation and live UI controls.
 - Added player-controlled tax policy with revenue and unrest trade-offs.
 - Added four victory paths, capital-loss defeat, and terminal campaign state.
 - Linked international trade-agreement income to the global market index and displayed current prices in the Realm Council.

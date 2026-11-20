@@ -17,7 +17,7 @@ use self::{
     diplomacy::{Relation, Treaty, new_matrix, set_symmetric},
     economy::{Building, Resources, terrain_yield},
     events::WorldEvent,
-    market::MarketState,
+    market::{Commodity, MarketState},
     military::{Army, UnitClass, recruitment_cost},
     society::{CivicPolicy, GovernmentType},
     technology::Technology,
@@ -637,6 +637,46 @@ impl GameState {
             &mut self.chronicle,
             format!("A truce is signed with {name}. The armies fall silent."),
         );
+        true
+    }
+
+    pub fn buy_commodity(&mut self, commodity: Commodity, amount: f32) -> bool {
+        if !amount.is_finite() || amount <= 0.0 || amount > 1000.0 {
+            return false;
+        }
+        let unit_price = commodity.price(&self.market);
+        let total_cost = amount * unit_price * 1.10;
+        if self.factions[PLAYER_ID].resources.gold < total_cost {
+            self.add_log(format!("The treasury cannot afford {amount:.0} units of {}.", commodity.name()));
+            return false;
+        }
+        let faction = &mut self.factions[PLAYER_ID];
+        faction.resources.gold -= total_cost;
+        commodity.add_to(&mut faction.resources, amount);
+        self.add_log(format!(
+            "MARKET PURCHASE — acquired {amount:.0} units of {} for {:.1} gold.",
+            commodity.name(),
+            total_cost
+        ));
+        true
+    }
+
+    pub fn sell_commodity(&mut self, commodity: Commodity, amount: f32) -> bool {
+        if !amount.is_finite() || amount <= 0.0 || amount > 1000.0 {
+            return false;
+        }
+        let cost = commodity.cost(amount);
+        if !self.factions[PLAYER_ID].resources.pay(&cost) {
+            self.add_log(format!("Not enough {} in the national stockpile to sell {amount:.0} units.", commodity.name()));
+            return false;
+        }
+        let revenue = amount * commodity.price(&self.market) * 0.90;
+        self.factions[PLAYER_ID].resources.gold += revenue;
+        self.add_log(format!(
+            "MARKET SALE — sold {amount:.0} units of {} for {:.1} gold.",
+            commodity.name(),
+            revenue
+        ));
         true
     }
 
@@ -1296,6 +1336,27 @@ mod tests {
         }
         assert!(game.recruit_army(UnitClass::Infantry));
         assert_eq!(game.army_count(PLAYER_ID), 1);
+    }
+
+    #[test]
+    fn market_buy_and_sell_apply_prices_and_inventory_changes() {
+        let mut game = GameState::new(2033);
+        let before_gold = game.factions[PLAYER_ID].resources.gold;
+        assert!(game.buy_commodity(Commodity::Iron, 5.0));
+        assert!(game.factions[PLAYER_ID].resources.iron >= 17.0);
+        assert!(game.factions[PLAYER_ID].resources.gold < before_gold);
+        let gold_after_buy = game.factions[PLAYER_ID].resources.gold;
+        assert!(game.sell_commodity(Commodity::Iron, 5.0));
+        assert!(game.factions[PLAYER_ID].resources.iron >= 12.0);
+        assert!(game.factions[PLAYER_ID].resources.gold > gold_after_buy);
+    }
+
+    #[test]
+    fn market_rejects_invalid_transaction_amounts() {
+        let mut game = GameState::new(2034);
+        assert!(!game.buy_commodity(Commodity::Food, f32::NAN));
+        assert!(!game.sell_commodity(Commodity::Food, -5.0));
+        assert!(!game.buy_commodity(Commodity::Timber, 1001.0));
     }
 
     #[test]

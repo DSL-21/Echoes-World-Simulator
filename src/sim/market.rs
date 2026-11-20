@@ -2,6 +2,61 @@ use serde::{Deserialize, Serialize};
 
 use super::economy::Resources;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Commodity {
+    Food,
+    Timber,
+    Stone,
+    Iron,
+}
+
+impl Commodity {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Food => "food",
+            Self::Timber => "timber",
+            Self::Stone => "stone",
+            Self::Iron => "iron",
+        }
+    }
+
+    pub fn price(self, market: &MarketState) -> f32 {
+        match self {
+            Self::Food => market.food_price,
+            Self::Timber => market.timber_price,
+            Self::Stone => market.stone_price,
+            Self::Iron => market.iron_price,
+        }
+    }
+
+    pub fn stock(self, resources: &Resources) -> f32 {
+        match self {
+            Self::Food => resources.food,
+            Self::Timber => resources.timber,
+            Self::Stone => resources.stone,
+            Self::Iron => resources.iron,
+        }
+    }
+
+    pub fn cost(self, amount: f32) -> Resources {
+        match self {
+            Self::Food => Resources { food: amount, ..Default::default() },
+            Self::Timber => Resources { timber: amount, ..Default::default() },
+            Self::Stone => Resources { stone: amount, ..Default::default() },
+            Self::Iron => Resources { iron: amount, ..Default::default() },
+        }
+    }
+
+    pub fn add_to(self, resources: &mut Resources, amount: f32) {
+        match self {
+            Self::Food => resources.food += amount,
+            Self::Timber => resources.timber += amount,
+            Self::Stone => resources.stone += amount,
+            Self::Iron => resources.iron += amount,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct MarketState {
     pub food_price: f32,
@@ -63,6 +118,15 @@ impl MarketState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn commodity_transactions_map_to_the_correct_stockpile() {
+        let mut stock = Resources::default();
+        Commodity::Timber.add_to(&mut stock, 12.0);
+        assert_eq!(Commodity::Timber.stock(&stock), 12.0);
+        assert_eq!(Commodity::Timber.cost(5.0).timber, 5.0);
+        assert_eq!(Commodity::Food.stock(&stock), 0.0);
+    }
 
     #[test]
     fn scarce_commodities_become_more_expensive() {

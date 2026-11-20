@@ -12,6 +12,7 @@ use sim::{
     GameState, PLAYER_ID,
     diplomacy::Treaty,
     economy::Building,
+    market::Commodity,
     military::{Army, UnitClass},
     world::{Coord, Terrain},
 };
@@ -103,6 +104,14 @@ enum UiAction {
     Save,
     Load,
     Reform,
+    BuyFood,
+    SellFood,
+    BuyTimber,
+    SellTimber,
+    BuyStone,
+    SellStone,
+    BuyIron,
+    SellIron,
     TaxLower,
     TaxRaise,
 }
@@ -218,6 +227,155 @@ fn spawn_hud(commands: &mut Commands) {
                 TextColor(Color::srgb(0.63, 0.75, 0.77)),
                 HudLine::Market,
             ));
+            parent.spawn((
+                Text::new("TRADE DESK  •  10 UNITS PER ORDER"),
+                TextFont::from_font_size(11.5),
+                TextColor(Color::srgb(0.91, 0.83, 0.61)),
+            ));
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::BuyFood,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.17, 0.31, 0.36)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("BUY FOOD"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::SellFood,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.21, 0.36, 0.29)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("SELL FOOD"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::BuyTimber,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.17, 0.31, 0.36)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("BUY TIMBER"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::SellTimber,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.21, 0.36, 0.29)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("SELL TIMBER"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::BuyStone,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.25, 0.29, 0.34)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("BUY STONE"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::SellStone,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.34, 0.32, 0.25)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("SELL STONE"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
+            parent.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: px(6),
+                ..default()
+            }).with_children(|row| {
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::BuyIron,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.25, 0.29, 0.34)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("BUY IRON"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+                row.spawn((
+                    Button,
+                    Hovered::default(),
+                    UiAction::SellIron,
+                    Node {
+                        width: px(160),
+                        height: px(28),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(0.34, 0.32, 0.25)),
+                )).with_children(|b| {
+                    b.spawn((Text::new("SELL IRON"), TextFont::from_font_size(10.0), TextColor(Color::WHITE)));
+                });
+            });
             parent.spawn((
                 Text::new(""),
                 TextFont::from_font_size(12.0),
@@ -1053,6 +1211,30 @@ fn handle_ui_activate(
         UiAction::Load => {}
         UiAction::Reform => {
             game.cycle_player_policy();
+        }
+        UiAction::BuyFood => {
+            game.buy_commodity(Commodity::Food, 10.0);
+        }
+        UiAction::SellFood => {
+            game.sell_commodity(Commodity::Food, 10.0);
+        }
+        UiAction::BuyTimber => {
+            game.buy_commodity(Commodity::Timber, 10.0);
+        }
+        UiAction::SellTimber => {
+            game.sell_commodity(Commodity::Timber, 10.0);
+        }
+        UiAction::BuyStone => {
+            game.buy_commodity(Commodity::Stone, 10.0);
+        }
+        UiAction::SellStone => {
+            game.sell_commodity(Commodity::Stone, 10.0);
+        }
+        UiAction::BuyIron => {
+            game.buy_commodity(Commodity::Iron, 10.0);
+        }
+        UiAction::SellIron => {
+            game.sell_commodity(Commodity::Iron, 10.0);
         }
         UiAction::TaxLower => {
             game.adjust_tax_rate(-0.02);

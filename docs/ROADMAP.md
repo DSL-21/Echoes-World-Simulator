@@ -32,11 +32,12 @@ The project is being built as a connected simulation rather than a collection of
 - [x] Adjustable tax rate with bounded values and unrest consequences
 - [x] Four victory paths, capital-loss defeat condition and terminal campaign state
 - [x] Global commodity market with supply/demand price movement and trade-income effects
+- [x] Player buy/sell orders for food, timber, stone and iron
 - [ ] Verify visual playability on a Windows desktop
 - [ ] Add automated multi-year balance and AI simulation tests
 
 ## 0.3 — Grand strategy systems
-- [ ] Multi-step production chains, resource-specific market selling and price-sensitive trade contracts
+- [ ] Multi-step production chains, player-sized market orders and price-sensitive trade contracts
 - [ ] Trade routes, ports and maritime transport
 - [ ] Diplomacy AI: proposals, alliances, guarantees and demands
 - [ ] War goals, peace terms, occupations and sieges

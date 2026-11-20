@@ -14,7 +14,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 - City founding and population tracking.
 - Diplomacy with trade agreements, alliances, war declarations and truces.
 - Internal politics with six government forms, six civic policies, legitimacy, unrest and province revolts.
-- A global commodity market where food, timber, stone and iron prices react to world supply and demand.
+- A global commodity market where food, timber, stone and iron prices react to world supply and demand, with live buy/sell orders in the Trade Desk.
 - Four victory paths: territorial hegemony, scientific ascendancy, economic dominion and cultural legacy.
 - Defeat when the player loses the capital; completed campaigns become terminal and remain saved.
 - Armies with recruitment, movement, supply, experience and province battles.
@@ -54,7 +54,7 @@ The goal is a systemic world in which independent realms expand, develop economi
 | F5 | Save campaign to echoes_save.json |
 | F9 | Load campaign from echoes_save.json |
 
-The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
+The in-game Realm Council also provides clickable actions. The World Market board shows live commodity prices and lets the player buy or sell ten-unit lots of food, timber, stone and iron at a market spread. The Realm panel shows government, active policy, stability, unrest and legitimacy. National reforms cost resources and have a six-year cooldown. The tax rate can be adjusted between 8% and 35%; higher rates raise revenue but increase unrest. Severe unrest and low legitimacy can cause a province revolt. Armies move one province at a time; select an adjacent destination before issuing the move order.
 
 ## Campaign goals
 
