@@ -1783,6 +1783,7 @@ mod tests {
         fleet.strength = 60.0;
         fleet.supply = 50.0;
         game.naval_fleets.push(fleet);
+        game.next_naval_fleet_id = 2;
 
         game.update_naval_fleet_condition();
 
