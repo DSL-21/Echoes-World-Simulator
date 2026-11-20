@@ -38,11 +38,24 @@ impl Army {
             UnitClass::Cavalry => "Mounted Host",
             UnitClass::Siege => "Siege Train",
         };
-        Self { id, owner, name: format!("{label} {id}"), position, strength: 100.0, supply: 100.0, class, experience: 0.0 }
+        Self {
+            id,
+            owner,
+            name: format!("{label} {id}"),
+            position,
+            strength: 100.0,
+            supply: 100.0,
+            class,
+            experience: 0.0,
+        }
     }
 
     pub fn combat_power(&self) -> f32 {
-        let class_bonus = match self.class { UnitClass::Infantry => 1.0, UnitClass::Cavalry => 1.12, UnitClass::Siege => 0.92 };
+        let class_bonus = match self.class {
+            UnitClass::Infantry => 1.0,
+            UnitClass::Cavalry => 1.12,
+            UnitClass::Siege => 0.92,
+        };
         self.strength * class_bonus * (0.65 + self.supply / 250.0) * (1.0 + self.experience / 250.0)
     }
 }
